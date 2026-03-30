@@ -186,10 +186,27 @@ class MultiplayerImposterGame {
 
         // Тоглоом эхлүүлэх
         document.getElementById('start-game-btn').addEventListener('click', () => {
-            if (this.currentRoom && this.currentRoom.playerCount >= 3) {
+            console.log('Тоглоом эхлүүлэх товч дарлаа');
+            console.log('Current room:', this.currentRoom);
+            
+            if (this.currentRoom) {
+                console.log('Тоглогчдын тоо:', this.currentRoom.playerCount);
+                console.log('Сонгосон сэдэв:', this.currentRoom.selectedTopic);
+                
+                if (this.currentRoom.playerCount < 3) {
+                    alert('Тоглоом эхлүүлэхийн тулд хамгийн багадаа 3 тоглогч хэрэгтэй!');
+                    return;
+                }
+                
+                if (!this.currentRoom.selectedTopic) {
+                    alert('Эхлэхийн тулд сэдэв сонгох шаардлагатай!');
+                    return;
+                }
+                
+                console.log('Сервер рүү start-game event илгээж байна');
                 this.socket.emit('start-game');
             } else {
-                alert('Тоглоом эхлүүлэхийн тулд хамгийн багадаа 3 тоглогч хэрэгтэй!');
+                alert('Та өрөөнд байхгүй байна!');
             }
         });
 
