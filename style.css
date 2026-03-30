@@ -534,6 +534,130 @@ footer {
     line-height: 1.4;
 }
 
+.waiting-chat-container {
+    background: #f7fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 15px;
+    padding: 20px;
+    margin: 25px 0;
+}
+
+.waiting-chat-container h3 {
+    color: #764ba2;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.creator-controls {
+    background: linear-gradient(135deg, #fef5e7 0%, #fdebd0 100%);
+    border: 2px solid #f39c12;
+    border-radius: 15px;
+    padding: 25px;
+    margin: 25px 0;
+}
+
+.creator-controls h3 {
+    color: #f39c12;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.topic-selection p {
+    text-align: center;
+    margin-bottom: 20px;
+    font-weight: bold;
+    color: #333;
+}
+
+.topics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 10px;
+    background: white;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+}
+
+.topic-option {
+    background: white;
+    border: 2px solid #e2e8f0;
+    padding: 15px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    font-size: 0.95em;
+    line-height: 1.4;
+}
+
+.topic-option:hover {
+    border-color: #f39c12;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(243, 156, 18, 0.2);
+}
+
+.topic-option.selected {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    color: white;
+    border-color: #e67e22;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(230, 126, 34, 0.3);
+}
+
+.selected-topic {
+    background: white;
+    border: 2px solid #27ae60;
+    border-radius: 10px;
+    padding: 15px;
+    margin: 15px 0;
+    text-align: center;
+}
+
+.selected-topic p {
+    margin: 0 0 10px 0;
+    color: #27ae60;
+    font-size: 1.1em;
+}
+
+.selected-topic strong {
+    color: #27ae60;
+    font-size: 1.2em;
+}
+
+/* Хүлээлгэний чат загвар */
+#waiting-messages {
+    height: 200px;
+    overflow-y: auto;
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    border: 1px solid #e2e8f0;
+}
+
+/* Topic selection scroll bar styling */
+.topics-grid::-webkit-scrollbar {
+    width: 8px;
+}
+
+.topics-grid::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.topics-grid::-webkit-scrollbar-thumb {
+    background: #f39c12;
+    border-radius: 10px;
+}
+
+.topics-grid::-webkit-scrollbar-thumb:hover {
+    background: #e67e22;
+}
+
 @media (max-width: 768px) {
     .game-container {
         padding: 10px;
@@ -570,5 +694,20 @@ footer {
     .code-box {
         font-size: 1.5em;
         letter-spacing: 3px;
+    }
+    
+    .topics-grid {
+        grid-template-columns: 1fr;
+        max-height: 250px;
+    }
+    
+    .waiting-chat-container {
+        margin: 15px 0;
+        padding: 15px;
+    }
+    
+    .creator-controls {
+        margin: 15px 0;
+        padding: 20px;
     }
 }
