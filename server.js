@@ -41,6 +41,90 @@ const mongolianTopics = [
     "Төрийн далбааны утга учир"
 ];
 
+// Шинэ сэдвийн ангиллууд
+const topicCategories = {
+    clothing: [
+        "Хувцасны загвар",
+        "Гуталны загвар",
+        "Малгайны загвар",
+        "Үндэсний хувцас",
+        "Спорт хувцас",
+        "Зуны хувцас",
+        "Өвлийн хувцас",
+        "Гоёл чимэглэл"
+    ],
+    brands: [
+        "Nike бренд",
+        "Adidas бренд", 
+        "Apple бренд",
+        "Samsung бренд",
+        "Toyota бренд",
+        "Coca-Cola бренд",
+        "McDonald's бренд",
+        "Louis Vuitton бренд"
+    ],
+    movies: [
+        "Marvel кинонууд",
+        "DC кинонууд",
+        "Disney кинонууд",
+        "Бөгөлөө кино",
+        "Inception кино",
+        "Avatar кино",
+        "Harry Potter кино",
+        "Star Wars кино"
+    ],
+    music: [
+        "K-Pop хөгжим",
+        "Рок хөгжим",
+        "Поп хөгжим",
+        "Рэп хөгжим",
+        "Классик хөгжим",
+        "Жазз хөгжим",
+        "Хип-хоп хөгжим",
+        "Электроник хөгжим"
+    ],
+    food: [
+        "Монгол хоол",
+        "Япон хоол",
+        "Италиан хоол",
+        "Хятад хоол",
+        "Салад",
+        "Десерт",
+        "Уух зүйл",
+        "Фастфүүд"
+    ],
+    sports: [
+        "Хөлбөмбөг",
+        "Сагсан бөмбөг",
+        "Воллейбол",
+        "Теннис",
+        "Бокс",
+        "Сүмо бөх",
+        "Гольф",
+        "Хүндийн өргөлт"
+    ],
+    technology: [
+        "Смартфон",
+        "Компьютер",
+        "Гар утас",
+        "Таблет",
+        "Лаптоп",
+        "Гар дэлгэц",
+        "Smart watch",
+        "VR технологи"
+    ],
+    animals: [
+        "Машин үнэг",
+        "Хонь",
+        "Үхэр",
+        "Морь",
+        "Ямаа",
+        "Тэмээ",
+        "Нохой",
+        "Муур"
+    ]
+};
+
 // Асуултууд
 const questions = [
     {
@@ -301,9 +385,28 @@ class Room {
         return false;
     }
 
+    // Санамсаргүй сэдэв сонгох функц
+    selectRandomTopic() {
+        const categories = Object.keys(topicCategories);
+        const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+        const categoryTopics = topicCategories[randomCategory];
+        const randomTopic = categoryTopics[Math.floor(Math.random() * categoryTopics.length)];
+        
+        this.selectedTopic = randomTopic;
+        return {
+            topic: randomTopic,
+            category: randomCategory
+        };
+    }
+
     // Бүх сэдвүүдийг авах
     static getAllTopics() {
         return mongolianTopics;
+    }
+
+    // Ангиллуудыг авах
+    static getTopicCategories() {
+        return topicCategories;
     }
 }
 
@@ -323,7 +426,8 @@ io.on('connection', (socket) => {
                 roomId, 
                 room: room.getGameState(),
                 isCreator: true,
-                topics: Room.getAllTopics()
+                topics: Room.getAllTopics(),
+                categories: Room.getTopicCategories()
             });
             console.log(`${playerName} өрөө үүсгэлээ: ${roomId}`);
         } else {
@@ -416,6 +520,65 @@ io.on('connection', (socket) => {
         } else {
             socket.emit('error', 'Сэдэв сонгох боломжгүй');
         }
+    });
+
+    // Санамсаргүй сэдэв сонгох
+    socket.on('select-random-topic', () => {
+        const room = findPlayerRoom(socket.id);
+        
+        if (!room) {
+            socket.emit('error', 'Та өрөөнд байхгүй байна');
+            return;
+        }
+
+        // Зөвхөн өрөө үүсгэгч л сэдэв сонгох боломжтой
+        if (socket.id !== room.creatorId) {
+            socket.emit('error', 'Зөвхөн өрөө үүсгэгч л сэдэв сонгох боломжтой');
+            return;
+        }
+
+        const topicData = room.selectRandomTopic();
+        
+        // Бүх тоглогчид руу сонгосон сэдвийг илгээх
+        io.to(room.id).emit('random-topic-selected', {
+            topic: topicData.topic,
+            category: topicData.category,
+            room: room.getGameState()
+        });
+        
+        console.log(`Санамсаргүй сэдэв сонгогдлоо: ${topicData.topic} (${topicData.category})`);
+    });
+
+    // Тоглоом дуусгах
+    socket.on('end-game', () => {
+        const room = findPlayerRoom(socket.id);
+        
+        if (!room) {
+            socket.emit('error', 'Та өрөөнд байхгүй байна');
+            return;
+        }
+
+        // Зөвхөн өрөө үүсгэгч л тоглоом дуусгах боломжтой
+        if (socket.id !== room.creatorId) {
+            socket.emit('error', 'Зөвхөн өрөө үүсгэгч л тоглоом дуусгах боломжтой');
+            return;
+        }
+
+        room.gamePhase = 'waiting';
+        room.currentRound = 0;
+        room.selectedTopic = null;
+        room.currentQuestion = null;
+        room.usedQuestions = [];
+        room.playerAnswers.clear();
+        room.votes.clear();
+        
+        // Бүх тоглогчид руу мэдэгдэх
+        io.to(room.id).emit('game-ended-by-creator', {
+            message: 'Өрөө үүсгэгч тоглоомыг дуусгав',
+            room: room.getGameState()
+        });
+        
+        console.log(`Тоглоом дуусгагдлаа: ${room.id}`);
     });
 
     // Тоглоом эхлүүлэх
