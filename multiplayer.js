@@ -27,6 +27,12 @@ class MultiplayerImposterGame {
             this.updateRoomInfo(data.room);
             this.addSystemMessage(`🏠 Өрөө үүсгэгдлээ! Код: ${data.roomId}`);
             
+            // Өрөөний кодыг харуулах
+            const roomCodeDisplay = document.getElementById('room-code-display');
+            if (roomCodeDisplay) {
+                roomCodeDisplay.textContent = data.roomId;
+            }
+            
             // Хэрэв үүсгэгч бол сэдвүүдийг харуулах
             if (data.isCreator) {
                 this.showTopicSelection(data.topics, data.categories);
@@ -39,6 +45,12 @@ class MultiplayerImposterGame {
             this.showScreen('waiting-screen');
             this.updateRoomInfo(data.room);
             this.addSystemMessage(`🎮 өрөөнд орлоо!`);
+            
+            // Өрөөний кодыг харуулах
+            const roomCodeDisplay = document.getElementById('room-code-display');
+            if (roomCodeDisplay) {
+                roomCodeDisplay.textContent = data.room.id;
+            }
             
             // Хэрэв сэдэв сонгогдсон бол харуулах
             if (data.selectedTopic) {
@@ -265,6 +277,11 @@ class MultiplayerImposterGame {
         // Сэдвийг өөрчлөх товч
         document.getElementById('change-topic-btn').addEventListener('click', () => {
             this.showTopicSelection(this.allTopics, this.allCategories);
+        });
+
+        // Өрөөний кодыг хуулбарлах товч
+        document.getElementById('copy-room-code-btn').addEventListener('click', () => {
+            this.copyRoomCode();
         });
 
         // Санамсаргүй сэдэв сонгох товч
@@ -922,6 +939,33 @@ class MultiplayerImposterGame {
         }
         
         this.socket.emit('submit-final-vote', this.selectedFinalVote);
+    }
+
+    // Өрөөний кодыг хуулбарлах функц
+    copyRoomCode() {
+        const roomCodeElement = document.getElementById('room-code-display');
+        const copyBtn = document.getElementById('copy-room-code-btn');
+        
+        if (!roomCodeElement || !copyBtn) return;
+        
+        const roomCode = roomCodeElement.textContent;
+        
+        // Clipboard руу хуулбарлах
+        navigator.clipboard.writeText(roomCode).then(() => {
+            // Товчны бичиглэл өөрчлөх
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = '✅ Хуулбарлагдлаа!';
+            copyBtn.style.background = 'linear-gradient(135deg, #27ae60 0%, #229954 100%)';
+            
+            // 3 секундын дараа эхний бичиглэлд буцах
+            setTimeout(() => {
+                copyBtn.textContent = originalText;
+                copyBtn.style.background = '';
+            }, 3000);
+        }).catch(err => {
+            console.error('Хуулбарлахад алдаа гарлаа:', err);
+            alert('Кодыг хуулбарлахад алдаа гарлаа. Гартаа оруулж хуулбарлана уу!');
+        });
     }
 }
 
