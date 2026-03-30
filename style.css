@@ -1,941 +1,714 @@
-/* Монгол Imposter тоглоомны CSS */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
+const cors = require('cors');
+const { v4: uuidv4 } = require('uuid');
+const path = require('path');
 
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-    color: #333;
-    direction: ltr;
-}
-
-.game-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-}
-
-header {
-    text-align: center;
-    margin-bottom: 30px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 20px;
-    border-radius: 15px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-}
-
-header h1 {
-    font-size: 2.5em;
-    color: #764ba2;
-    margin-bottom: 10px;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-header p {
-    font-size: 1.2em;
-    color: #666;
-}
-
-main {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.screen {
-    display: none;
-    width: 100%;
-    max-width: 800px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 30px;
-    border-radius: 15px;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(10px);
-}
-
-.screen.active {
-    display: block;
-    animation: fadeIn 0.5s ease-in-out;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
     }
-    to {
-        opacity: 1;
-        transform: translateY(0);
+});
+
+// Middleware
+app.use(cors());
+app.use(express.static(path.join(__dirname)));
+
+// Тоглоомны төлөв
+const rooms = new Map();
+const players = new Map();
+
+// Монгол сэдвүүд
+const mongolianTopics = [
+    "Хаан сүргийн тухай ярицаа",
+    "Чингис хааны гавьяа гүйцэтгэл",
+    "Монголчуудын нүүдлийн соёл",
+    "Гэгээрэн төрийн тухай",
+    "Өгэдэй хааны үе",
+    "Монголын цэргийн тактик",
+    "Их Монгол Улсын дипломат",
+    "Монголын үндэсний хувцас",
+    "Байгаль эхийг хамгаалах",
+    "Монгол хэлний цагаан толгой",
+    "Наадам нарын тухай",
+    "Монгол ахуйд байгаа эрсдэл",
+    "Улаанбаатар хотын асуудал",
+    "Монголчуудын уламжлалт ёс",
+    "Төрийн далбааны утга учир"
+];
+
+// Асуултууд
+const questions = [
+    {
+        question: "Монгол Улсын нийслэл хаана вэ?",
+        answers: ["Улаанбаатар", "Эрдэнэт", "Дархан", "Чойбалсан"]
+    },
+    {
+        question: "Чингис хаан хэдэн онд төрсэн бэ?",
+        answers: ["1162 он", "1155 он", "1206 он", "1189 он"]
+    },
+    {
+        question: "Монголын үндэсний бөхийн нэр юу вэ?",
+        answers: ["Морь", "Тэмээ", "Үхэр", "Ямаа"]
+    },
+    {
+        question: "Монгол улсын тугийн өнгө ямар вэ?",
+        answers: ["Улаан, цэнхэр, хөх", "Улаан, цагаан, хар", "Улаан, хөх, ногоон", "Улаан, шар, хөх"]
+    },
+    {
+        question: "Монголын хамгийн том наадам юу вэ?",
+        answers: ["Наадам", "Цагаан сар", "Үндэсний баяр", "Сүлд баяр"]
+    },
+    {
+        question: "Монгол хэлний дүрэмж хэдэн үсэгтэй вэ?",
+        answers: ["35", "26", "33", "28"]
+    },
+    {
+        question: "Говь гэж юуг хэлдэг вэ?",
+        answers: ["Хуурай талбай", "Уул нуруу", "Ой хөвч", "Нуур гол"]
+    },
+    {
+        question: "Монголын анхны хаан хэн бэ?",
+        answers: ["Мөнх хаан", "Чингис хаан", "Өгэдэй хаан", "Хубилай хаан"]
+    },
+    {
+        question: "Монголын үндэсний хоол юу вэ?",
+        answers: ["Бууз", "Хуушуур", "Цуйван", "Банш"]
+    },
+    {
+        question: "Монгол Улс хэдэн аймагт хуваагддаг вэ?",
+        answers: ["21", "22", "23", "20"]
+    },
+    {
+        question: "Монголын үндэсний хувцасыг юу гэдэг вэ?",
+        answers: ["Дээл", "Хувцас", "Гутал", "Малгай"]
+    },
+    {
+        question: "Монголын хамгийн өндөр уул юу вэ?",
+        answers: ["Хүйтэн хайрхан", "Алтай овоо", "Отгонтэнгэр", "Сүхбаатар"]
+    },
+    {
+        question: "Монголын үндэсний тоглоом юу вэ?",
+        answers: ["Шагай", "Хэл хэтэг", "Домбир", "Тоглоом"]
+    },
+    {
+        question: "Монголын үндэсний уран зураг юу вэ?",
+        answers: ["Монгол зураг", "Уран зураг", "Зураг", "Дүрслэл"]
+    },
+    {
+        question: "Монгол Улсын мөнгөний нэгж юу вэ?",
+        answers: ["Төгрөг", "Юань", "Доллар", "Евро"]
     }
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    padding: 15px 30px;
-    font-size: 1.1em;
-    border-radius: 25px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 5px 15px rgba(118, 75, 162, 0.3);
-    margin: 10px;
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(118, 75, 162, 0.4);
-}
-
-.btn-secondary {
-    background: #4a5568;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    font-size: 1em;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    margin: 5px;
-}
-
-.btn-secondary:hover {
-    background: #2d3748;
-    transform: translateY(-1px);
-}
-
-.start-content {
-    text-align: center;
-}
-
-.start-content h2 {
-    color: #764ba2;
-    margin-bottom: 20px;
-    font-size: 2em;
-}
-
-.start-content p {
-    font-size: 1.2em;
-    margin-bottom: 30px;
-    color: #666;
-}
-
-.game-rules {
-    margin-top: 40px;
-    text-align: left;
-    background: #f7fafc;
-    padding: 20px;
-    border-radius: 10px;
-    border-left: 4px solid #764ba2;
-}
-
-.game-rules h3 {
-    color: #764ba2;
-    margin-bottom: 15px;
-}
-
-.game-rules ul {
-    list-style: none;
-    padding-left: 0;
-}
-
-.game-rules li {
-    padding: 8px 0;
-    padding-left: 25px;
-    position: relative;
-}
-
-.game-rules li:before {
-    content: "▶";
-    position: absolute;
-    left: 0;
-    color: #764ba2;
-}
-
-.players-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin: 30px 0;
-}
-
-.player-card {
-    background: linear-gradient(135deg, #f6f8fb 0%, #e9ecef 100%);
-    padding: 20px;
-    border-radius: 15px;
-    text-align: center;
-    transition: all 0.3s ease;
-    border: 2px solid transparent;
-    cursor: pointer;
-}
-
-.player-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-    border-color: #764ba2;
-}
-
-.player-card.selected {
-    border-color: #e53e3e;
-    background: linear-gradient(135deg, #fed7d7 0%, #fc8181 100%);
-}
-
-.player-avatar {
-    font-size: 3em;
-    margin-bottom: 10px;
-}
-
-.player-name {
-    font-weight: bold;
-    font-size: 1.1em;
-    margin-bottom: 5px;
-}
-
-.player-status {
-    font-size: 0.9em;
-    color: #666;
-}
-
-.role-badge {
-    display: inline-block;
-    padding: 5px 15px;
-    border-radius: 20px;
-    font-weight: bold;
-    margin: 5px;
-}
-
-.role-imposter {
-    background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
-    color: white;
-}
-
-.role-crewmate {
-    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
-    color: white;
-}
-
-.game-info {
-    background: #f7fafc;
-    padding: 20px;
-    border-radius: 10px;
-    margin-top: 20px;
-}
-
-.chat-container {
-    background: #f7fafc;
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 30px;
-}
-
-.messages {
-    height: 300px;
-    overflow-y: auto;
-    background: white;
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 15px;
-    border: 1px solid #e2e8f0;
-}
-
-.message {
-    margin-bottom: 15px;
-    padding: 10px;
-    border-radius: 10px;
-    background: #edf2f7;
-}
-
-.message.own {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    margin-left: 50px;
-}
-
-.message-author {
-    font-weight: bold;
-    margin-bottom: 5px;
-}
-
-.message-text {
-    line-height: 1.4;
-}
-
-.chat-input {
-    display: flex;
-    gap: 10px;
-}
-
-.chat-input input {
-    flex: 1;
-    padding: 12px;
-    border: 2px solid #e2e8f0;
-    border-radius: 25px;
-    font-size: 1em;
-    transition: border-color 0.3s ease;
-}
-
-.chat-input input:focus {
-    outline: none;
-    border-color: #764ba2;
-}
-
-.voting-section {
-    background: #f7fafc;
-    padding: 20px;
-    border-radius: 10px;
-}
-
-.voting-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 15px;
-    margin: 20px 0;
-}
-
-.vote-option {
-    background: white;
-    border: 2px solid #e2e8f0;
-    padding: 15px;
-    border-radius: 10px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.vote-option:hover {
-    border-color: #764ba2;
-    transform: translateY(-2px);
-}
-
-.vote-option.selected {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-color: #764ba2;
-}
-
-.result-content {
-    text-align: center;
-}
-
-.result-content h2 {
-    font-size: 2.5em;
-    margin-bottom: 20px;
-}
-
-.result-content p {
-    font-size: 1.3em;
-    margin-bottom: 30px;
-    color: #666;
-}
-
-.final-roles {
-    background: #f7fafc;
-    padding: 20px;
-    border-radius: 10px;
-    margin: 30px 0;
-}
-
-.final-role-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px;
-    margin: 5px 0;
-    background: white;
-    border-radius: 8px;
-    border-left: 4px solid #764ba2;
-}
-
-footer {
-    text-align: center;
-    margin-top: 30px;
-    padding: 20px;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 10px;
-    color: #666;
-}
-
-.btn-warning {
-    background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
-    color: white;
-    border: none;
-    padding: 15px 30px;
-    font-size: 1.1em;
-    border-radius: 25px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 5px 15px rgba(237, 137, 54, 0.3);
-    margin: 10px;
-}
-
-.btn-warning:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(237, 137, 54, 0.4);
-}
-
-.lobby-content {
-    text-align: center;
-}
-
-.lobby-content h2 {
-    color: #764ba2;
-    margin-bottom: 30px;
-    font-size: 2em;
-}
-
-.name-input {
-    margin-bottom: 30px;
-}
-
-.name-input input {
-    width: 100%;
-    max-width: 300px;
-    padding: 15px;
-    font-size: 1.2em;
-    border: 2px solid #e2e8f0;
-    border-radius: 25px;
-    text-align: center;
-    transition: border-color 0.3s ease;
-}
-
-.name-input input:focus {
-    outline: none;
-    border-color: #764ba2;
-}
-
-.room-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    align-items: center;
-}
-
-.join-room {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.join-room input {
-    padding: 12px;
-    border: 2px solid #e2e8f0;
-    border-radius: 20px;
-    font-size: 1em;
-    text-align: center;
-    width: 150px;
-    transition: border-color 0.3s ease;
-}
-
-.join-room input:focus {
-    outline: none;
-    border-color: #764ba2;
-}
-
-.room-info {
-    background: #f7fafc;
-    padding: 25px;
-    border-radius: 15px;
-    margin-top: 30px;
-    border: 2px solid #e2e8f0;
-}
-
-.room-info h3 {
-    color: #764ba2;
-    margin-bottom: 15px;
-}
-
-.room-info p {
-    margin: 10px 0;
-    font-size: 1.1em;
-}
-
-.players-list {
-    margin: 20px 0;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.player-item {
-    background: white;
-    padding: 12px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    border-left: 4px solid #764ba2;
-}
-
-.player-item .avatar {
-    font-size: 1.5em;
-}
-
-.waiting-content {
-    text-align: center;
-}
-
-.waiting-content h2 {
-    color: #764ba2;
-    margin-bottom: 20px;
-    font-size: 2em;
-}
-
-.room-code-display {
-    background: #f7fafc;
-    padding: 25px;
-    border-radius: 15px;
-    margin-top: 30px;
-}
-
-.room-code-display h3 {
-    color: #764ba2;
-    margin-bottom: 15px;
-}
-
-.code-box {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    font-size: 2em;
-    font-weight: bold;
-    padding: 20px;
-    border-radius: 15px;
-    margin: 15px 0;
-    letter-spacing: 5px;
-    text-transform: uppercase;
-    box-shadow: 0 10px 25px rgba(118, 75, 162, 0.3);
-}
-
-.topic-display {
-    background: #fef5e7;
-    border: 2px solid #f39c12;
-    border-radius: 15px;
-    padding: 20px;
-    margin-bottom: 25px;
-    text-align: center;
-}
-
-.topic-display h3 {
-    color: #f39c12;
-    margin-bottom: 10px;
-}
-
-.topic-display p {
-    font-size: 1.2em;
-    font-weight: bold;
-    color: #333;
-    line-height: 1.4;
-}
-
-.waiting-chat-container {
-    background: #f7fafc;
-    border: 2px solid #e2e8f0;
-    border-radius: 15px;
-    padding: 20px;
-    margin: 25px 0;
-}
-
-.waiting-chat-container h3 {
-    color: #764ba2;
-    margin-bottom: 15px;
-    text-align: center;
-}
-
-.creator-controls {
-    background: linear-gradient(135deg, #fef5e7 0%, #fdebd0 100%);
-    border: 2px solid #f39c12;
-    border-radius: 15px;
-    padding: 25px;
-    margin: 25px 0;
-}
-
-.creator-controls h3 {
-    color: #f39c12;
-    margin-bottom: 20px;
-    text-align: center;
-}
-
-.topic-selection p {
-    text-align: center;
-    margin-bottom: 20px;
-    font-weight: bold;
-    color: #333;
-}
-
-.topics-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 15px;
-    margin-bottom: 20px;
-    max-height: 300px;
-    overflow-y: auto;
-    padding: 10px;
-    background: white;
-    border-radius: 10px;
-    border: 1px solid #e2e8f0;
-}
-
-.topic-option {
-    background: white;
-    border: 2px solid #e2e8f0;
-    padding: 15px;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-align: center;
-    font-size: 0.95em;
-    line-height: 1.4;
-}
-
-.topic-option:hover {
-    border-color: #f39c12;
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(243, 156, 18, 0.2);
-}
-
-.topic-option.selected {
-    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
-    color: white;
-    border-color: #e67e22;
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(230, 126, 34, 0.3);
-}
-
-.selected-topic {
-    background: white;
-    border: 2px solid #27ae60;
-    border-radius: 10px;
-    padding: 15px;
-    margin: 15px 0;
-    text-align: center;
-}
-
-.selected-topic p {
-    margin: 0 0 10px 0;
-    color: #27ae60;
-    font-size: 1.1em;
-}
-
-.selected-topic strong {
-    color: #27ae60;
-    font-size: 1.2em;
-}
-
-/* Хүлээлгэний чат загвар */
-#waiting-messages {
-    height: 200px;
-    overflow-y: auto;
-    background: white;
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 15px;
-    border: 1px solid #e2e8f0;
-}
-
-/* Topic selection scroll bar styling */
-.topics-grid::-webkit-scrollbar {
-    width: 8px;
-}
-
-.topics-grid::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 10px;
-}
-
-.topics-grid::-webkit-scrollbar-thumb {
-    background: #f39c12;
-    border-radius: 10px;
-}
-
-.topics-grid::-webkit-scrollbar-thumb:hover {
-    background: #e67e22;
-}
-
-/* Асуулт хариултын дэлгэц */
-.question-content {
-    text-align: center;
-}
-
-.question-content h2 {
-    color: #764ba2;
-    margin-bottom: 20px;
-    font-size: 2em;
-}
-
-.round-info {
-    display: flex;
-    justify-content: center;
-    gap: 30px;
-    margin-bottom: 30px;
-    background: #f7fafc;
-    padding: 15px;
-    border-radius: 10px;
-    border: 2px solid #e2e8f0;
-}
-
-.round-info p {
-    font-weight: bold;
-    color: #333;
-}
-
-.question-container {
-    margin-bottom: 30px;
-}
-
-.question-box {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 30px;
-    border-radius: 15px;
-    margin-bottom: 20px;
-    box-shadow: 0 10px 25px rgba(118, 75, 162, 0.3);
-}
-
-.question-box h3 {
-    font-size: 1.4em;
-    margin: 0;
-    line-height: 1.4;
-}
-
-.timer-container {
-    background: #f7fafc;
-    border: 2px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 15px;
-    position: relative;
-    height: 40px;
-}
-
-.timer-bar {
-    height: 100%;
-    background: linear-gradient(90deg, #48bb78 0%, #f6ad55 50%, #e53e3e 100%);
-    border-radius: 8px;
-    width: 100%;
-    transition: width 1s linear;
-}
-
-.timer-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-weight: bold;
-    font-size: 1.2em;
-    color: #333;
-}
-
-.answer-input {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    margin-bottom: 30px;
-}
-
-.answer-input input {
-    flex: 1;
-    max-width: 400px;
-    padding: 15px;
-    font-size: 1.2em;
-    border: 2px solid #e2e8f0;
-    border-radius: 25px;
-    text-align: center;
-    transition: border-color 0.3s ease;
-}
-
-.answer-input input:focus {
-    outline: none;
-    border-color: #764ba2;
-}
-
-.players-status {
-    background: #f7fafc;
-    border: 2px solid #e2e8f0;
-    border-radius: 15px;
-    padding: 20px;
-}
-
-.player-status-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px;
-    margin: 5px 0;
-    background: white;
-    border-radius: 8px;
-    border-left: 4px solid #764ba2;
-}
-
-.player-status-item.eliminated {
-    opacity: 0.5;
-    border-left-color: #e53e3e;
-    text-decoration: line-through;
-}
-
-/* Эцсийн таамаглалтын дэлгэц */
-.final-guess-content {
-    text-align: center;
-}
-
-.final-guess-content h2 {
-    color: #764ba2;
-    margin-bottom: 20px;
-    font-size: 2em;
-}
-
-.final-guess-content > p {
-    font-size: 1.2em;
-    margin-bottom: 30px;
-    color: #666;
-}
-
-.remaining-players-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
-}
-
-.remaining-player-card {
-    background: linear-gradient(135deg, #f6f8fb 0%, #e9ecef 100%);
-    padding: 20px;
-    border-radius: 15px;
-    text-align: center;
-    transition: all 0.3s ease;
-    border: 2px solid transparent;
-    cursor: pointer;
-}
-
-.remaining-player-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-    border-color: #764ba2;
-}
-
-.remaining-player-card.selected {
-    border-color: #e53e3e;
-    background: linear-gradient(135deg, #fed7d7 0%, #fc8181 100%);
-}
-
-.final-voting {
-    background: #f7fafc;
-    border: 2px solid #e2e8f0;
-    border-radius: 15px;
-    padding: 25px;
-}
-
-.final-voting h3 {
-    color: #764ba2;
-    margin-bottom: 20px;
-    font-size: 1.3em;
-}
-
-.final-voting-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 15px;
-    margin-bottom: 20px;
-}
-
-.final-vote-option {
-    background: white;
-    border: 2px solid #e2e8f0;
-    padding: 15px;
-    border-radius: 10px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.final-vote-option:hover {
-    border-color: #764ba2;
-    transform: translateY(-2px);
-}
-
-.final-vote-option.selected {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-color: #764ba2;
-}
-
-@media (max-width: 768px) {
-    .game-container {
-        padding: 10px;
+];
+
+class Room {
+    constructor(roomId) {
+        this.id = roomId;
+        this.players = new Map();
+        this.gamePhase = 'waiting'; // waiting, discussion, voting, result, question, final_guess
+        this.imposterId = null;
+        this.currentTopic = null;
+        this.creatorId = null; // Өрөө үүсгэгчийн ID
+        this.selectedTopic = null; // Сонгосон сэдэв
+        this.votes = new Map();
+        this.messages = []; // Хүлээлгэний үеийн чат мессежүүд
+        this.maxPlayers = 5;
+        this.currentRound = 0;
+        this.maxRounds = 5;
+        this.currentQuestion = null;
+        this.correctAnswer = null;
+        this.usedQuestions = [];
+        this.playerAnswers = new Map();
     }
-    
-    .screen {
-        padding: 20px;
+
+    addPlayer(socketId, playerName) {
+        if (this.players.size >= this.maxPlayers) {
+            return false;
+        }
+
+        const player = {
+            id: socketId,
+            name: playerName,
+            role: 'crewmate',
+            alive: true,
+            avatar: this.getAvatar(this.players.size),
+            joinedAt: new Date(),
+            isCreator: this.players.size === 0 // Эхний орж ирэх хүн үүсгэгч болно
+        };
+
+        this.players.set(socketId, player);
+        
+        // Хэрэв эхний тоглогч бол үүсгэгч болгох
+        if (this.players.size === 1) {
+            this.creatorId = socketId;
+        }
+        
+        return true;
     }
-    
-    header h1 {
-        font-size: 2em;
+
+    getAvatar(index) {
+        const avatars = ['👨‍🚀', '👩‍🚀', '🧑‍🚀', '👨‍💼', '👩‍💼'];
+        return avatars[index % avatars.length];
     }
-    
-    .players-grid {
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+
+    removePlayer(socketId) {
+        this.players.delete(socketId);
+        this.votes.delete(socketId);
     }
-    
-    .voting-grid {
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+
+    startGame() {
+        if (this.players.size < 3) {
+            return false;
+        }
+
+        // Хэрэв сэдэв сонгоогүй бол автоматаар сонгох
+        if (!this.selectedTopic) {
+            this.selectedTopic = mongolianTopics[Math.floor(Math.random() * mongolianTopics.length)];
+        }
+
+        // Санамсаргүйгээр нэгийг нь Imposter болгох
+        const playerIds = Array.from(this.players.keys());
+        const imposterIndex = Math.floor(Math.random() * playerIds.length);
+        this.imposterId = playerIds[imposterIndex];
+
+        // Imposter-г оноох
+        this.players.forEach(player => {
+            player.role = player.id === this.imposterId ? 'imposter' : 'crewmate';
+            player.alive = true;
+        });
+
+        this.currentTopic = this.selectedTopic;
+        this.gamePhase = 'discussion';
+        this.votes.clear();
+        this.messages = []; // Тоглоомын чатыг цэвэрлэх
+
+        return true;
     }
-    
-    .message.own {
-        margin-left: 20px;
+
+    addVote(voterId, targetId) {
+        if (!this.players.has(voterId) || !this.players.has(targetId)) {
+            return false;
+        }
+
+        this.votes.set(voterId, targetId);
+        return true;
     }
-    
-    .join-room {
-        flex-direction: column;
+
+    // Асуулт сонгох функц
+    selectRandomQuestion() {
+        const availableQuestions = questions.filter(q => !this.usedQuestions.includes(q.question));
+        if (availableQuestions.length === 0) {
+            // Бүх асуултууд ашиглагдсан бол дахин эхлэх
+            this.usedQuestions = [];
+            return this.selectRandomQuestion();
+        }
+        
+        const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+        const selectedQuestion = availableQuestions[randomIndex];
+        
+        this.currentQuestion = selectedQuestion.question;
+        this.correctAnswer = selectedQuestion.answers[0]; // Эхний хариулт зөв
+        this.usedQuestions.push(selectedQuestion.question);
+        
+        return {
+            question: selectedQuestion.question,
+            answers: selectedQuestion.answers.sort(() => Math.random() - 0.5) // Хариултуудыг санамсаргүй эрэмбэлэх
+        };
     }
-    
-    .room-actions {
-        gap: 15px;
+
+    // Хариулт шалгах функц
+    checkAnswer(playerId, answer) {
+        const player = this.players.get(playerId);
+        if (!player || !player.alive) return false;
+        
+        const isCorrect = answer === this.correctAnswer;
+        this.playerAnswers.set(playerId, { answer, isCorrect });
+        
+        return isCorrect;
     }
-    
-    .code-box {
-        font-size: 1.5em;
-        letter-spacing: 3px;
+
+    // Раунд шалгах функц
+    checkRoundEnd() {
+        const alivePlayers = Array.from(this.players.values()).filter(p => p.alive);
+        const answersCount = this.playerAnswers.size;
+        
+        // Бүх амьд тоглогчид хариулсан эсэх
+        if (answersCount >= alivePlayers.length) {
+            // Буруу хариулсан тоглогчдыг хасах
+            let eliminatedCount = 0;
+            this.playerAnswers.forEach((answerData, playerId) => {
+                if (!answerData.isCorrect) {
+                    const player = this.players.get(playerId);
+                    if (player) {
+                        player.alive = false;
+                        eliminatedCount++;
+                    }
+                }
+            });
+            
+            this.currentRound++;
+            this.playerAnswers.clear();
+            
+            // Үлдсэн тоглогчид
+            const remainingPlayers = Array.from(this.players.values()).filter(p => p.alive);
+            
+            return {
+                eliminated: eliminatedCount,
+                remaining: remainingPlayers.length,
+                round: this.currentRound,
+                isFinalRound: this.currentRound >= this.maxRounds || remainingPlayers.length <= 2
+            };
+        }
+        
+        return null;
     }
-    
-    .topics-grid {
-        grid-template-columns: 1fr;
-        max-height: 250px;
+
+    // Эцсийн таамаглалтын үе
+    startFinalGuess() {
+        this.gamePhase = 'final_guess';
+        const remainingPlayers = Array.from(this.players.values()).filter(p => p.alive);
+        return remainingPlayers;
     }
-    
-    .waiting-chat-container {
-        margin: 15px 0;
-        padding: 15px;
+
+    getGameState() {
+        return {
+            id: this.id,
+            players: Array.from(this.players.values()),
+            gamePhase: this.gamePhase,
+            currentTopic: this.currentTopic,
+            selectedTopic: this.selectedTopic,
+            playerCount: this.players.size,
+            maxPlayers: this.maxPlayers,
+            messages: this.messages,
+            creatorId: this.creatorId,
+            currentRound: this.currentRound,
+            maxRounds: this.maxRounds,
+            currentQuestion: this.currentQuestion,
+            remainingPlayers: Array.from(this.players.values()).filter(p => p.alive).length
+        };
     }
-    
-    .creator-controls {
-        margin: 15px 0;
-        padding: 20px;
+
+    // Сэдэв сонгох функц
+    selectTopic(topic) {
+        if (mongolianTopics.includes(topic)) {
+            this.selectedTopic = topic;
+            return true;
+        }
+        return false;
     }
-    
-    .round-info {
-        flex-direction: column;
-        gap: 10px;
-    }
-    
-    .answer-input {
-        flex-direction: column;
-        align-items: center;
-    }
-    
-    .answer-input input {
-        max-width: 100%;
-    }
-    
-    .remaining-players-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .final-voting-grid {
-        grid-template-columns: 1fr;
+
+    // Бүх сэдвүүдийг авах
+    static getAllTopics() {
+        return mongolianTopics;
     }
 }
+
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+    console.log('Хэрэглэгч холбогдлоо:', socket.id);
+
+    // Өрөө үүсгэх
+    socket.on('create-room', (playerName) => {
+        const roomId = uuidv4().slice(0, 6);
+        const room = new Room(roomId);
+        
+        if (room.addPlayer(socket.id, playerName)) {
+            rooms.set(roomId, room);
+            socket.join(roomId);
+            socket.emit('room-created', { 
+                roomId, 
+                room: room.getGameState(),
+                isCreator: true,
+                topics: Room.getAllTopics()
+            });
+            console.log(`${playerName} өрөө үүсгэлээ: ${roomId}`);
+        } else {
+            socket.emit('error', 'Өрөө үүсгэхэд алдаа гарлаа');
+        }
+    });
+
+    // Өрөөнд орох
+    socket.on('join-room', ({ roomId, playerName }) => {
+        const room = rooms.get(roomId);
+        
+        if (!room) {
+            socket.emit('error', 'Өрөө олдсонгүй');
+            return;
+        }
+
+        if (room.addPlayer(socket.id, playerName)) {
+            socket.join(roomId);
+            const player = room.players.get(socket.id);
+            socket.emit('room-joined', { 
+                roomId, 
+                room: room.getGameState(),
+                isCreator: player.isCreator,
+                selectedTopic: room.selectedTopic
+            });
+            
+            // Бүх тоглогчид руу шинэ тоглогчийн мэдээллийг илгээх
+            io.to(roomId).emit('player-joined', {
+                player: player,
+                room: room.getGameState()
+            });
+            
+            console.log(`${playerName} өрөөнд орлоо: ${roomId}`);
+        } else {
+            socket.emit('error', 'Өрөө дүүрэн байна');
+        }
+    });
+
+    // Хүлээлгэний үеийн чат мессеж
+    socket.on('waiting-chat-message', (message) => {
+        const room = findPlayerRoom(socket.id);
+        
+        if (!room || room.gamePhase !== 'waiting') {
+            socket.emit('error', 'Хүлээлгэний үе биш');
+            return;
+        }
+
+        const player = room.players.get(socket.id);
+        if (!player) return;
+
+        const messageData = {
+            id: uuidv4(),
+            playerId: socket.id,
+            playerName: player.name,
+            text: message,
+            timestamp: new Date()
+        };
+
+        room.messages.push(messageData);
+        
+        // Бүх тоглогчид руу мессеж илгээх
+        io.to(room.id).emit('waiting-chat-message', messageData);
+        
+        console.log(`[Хүлээлгээ] ${player.name}: ${message}`);
+    });
+
+    // Сэдэв сонгох
+    socket.on('select-topic', (topic) => {
+        const room = findPlayerRoom(socket.id);
+        
+        if (!room) {
+            socket.emit('error', 'Та өрөөнд байхгүй байна');
+            return;
+        }
+
+        // Зөвхөн өрөө үүсгэгч л сэдэв сонгох боломжтой
+        if (socket.id !== room.creatorId) {
+            socket.emit('error', 'Зөвхөн өрөө үүсгэгч л сэдэв сонгох боломжтой');
+            return;
+        }
+
+        if (room.selectTopic(topic)) {
+            // Бүх тоглогчид руу сонгосон сэдвийг илгээх
+            io.to(room.id).emit('topic-selected', {
+                topic: topic,
+                room: room.getGameState()
+            });
+            
+            console.log(`Сэдэв сонгогдлоо: ${topic}`);
+        } else {
+            socket.emit('error', 'Сэдэв сонгох боломжгүй');
+        }
+    });
+
+    // Тоглоом эхлүүлэх
+    socket.on('start-game', () => {
+        const room = findPlayerRoom(socket.id);
+        
+        if (!room) {
+            socket.emit('error', 'Та өрөөнд байхгүй байна');
+            return;
+        }
+
+        // Хамгийн багадаа 3 тоглогч хэрэгтэй
+        if (room.players.size < 3) {
+            socket.emit('error', 'Тоглоом эхлүүлэхийн тулд хамгийн багадаа 3 тоглогч хэрэгтэй!');
+            return;
+        }
+
+        // Сэдэв сонгогдсон эсэх
+        if (!room.selectedTopic) {
+            socket.emit('error', 'Эхлэхийн тулд сэдэв сонгох шаардлагатай!');
+            return;
+        }
+
+        // Тоглоомын горимыг шинэчлэх - асуулт хариулт
+        room.gamePhase = 'question';
+        room.currentRound = 1;
+        
+        // Эхний асуултыг илгээх
+        const questionData = room.selectRandomQuestion();
+        
+        // Бүх тоглогчид руу мэдээлэх
+        room.players.forEach((player, playerId) => {
+            io.to(playerId).emit('question-phase-started', {
+                role: player.role,
+                topic: room.selectedTopic,
+                round: room.currentRound,
+                maxRounds: room.maxRounds,
+                question: questionData.question,
+                answers: questionData.answers,
+                room: room.getGameState()
+            });
+        });
+        
+        console.log(`Асуултын тоглоом эхэллээ: ${room.id}, Раунд: ${room.currentRound}`);
+    });
+
+    // Хариулт илгээх
+    socket.on('submit-answer', (answer) => {
+        const room = findPlayerRoom(socket.id);
+        
+        if (!room || room.gamePhase !== 'question') {
+            socket.emit('error', 'Асуултын үе биш');
+            return;
+        }
+
+        const isCorrect = room.checkAnswer(socket.id, answer);
+        
+        socket.emit('answer-result', {
+            correct: isCorrect,
+            answer: answer
+        });
+        
+        // Раунд дууссан эсэх шалгах
+        const roundResult = room.checkRoundEnd();
+        if (roundResult) {
+            io.to(room.id).emit('round-ended', {
+                round: roundResult.round,
+                eliminated: roundResult.eliminated,
+                remaining: roundResult.remaining,
+                isFinalRound: roundResult.isFinalRound,
+                room: room.getGameState()
+            });
+            
+            if (roundResult.isFinalRound) {
+                // Эцсийн таамаглалтын үе
+                const remainingPlayers = room.startFinalGuess();
+                io.to(room.id).emit('final-guess-phase', {
+                    remainingPlayers: remainingPlayers,
+                    room: room.getGameState()
+                });
+            } else {
+                // Дараагийн раунд
+                setTimeout(() => {
+                    const nextQuestion = room.selectRandomQuestion();
+                    room.gamePhase = 'question';
+                    
+                    room.players.forEach((player, playerId) => {
+                        if (player.alive) {
+                            io.to(playerId).emit('next-question', {
+                                round: room.currentRound,
+                                question: nextQuestion.question,
+                                answers: nextQuestion.answers,
+                                room: room.getGameState()
+                            });
+                        }
+                    });
+                }, 3000);
+            }
+        }
+    });
+
+    // Эцсийн таамаглалт
+    socket.on('submit-final-vote', (targetId) => {
+        const room = findPlayerRoom(socket.id);
+        
+        if (!room || room.gamePhase !== 'final_guess') {
+            socket.emit('error', 'Эцсийн таамаглалтын үе биш');
+            return;
+        }
+
+        room.votes.set(socket.id, targetId);
+        
+        // Бүх санал ирсэн үү?
+        const alivePlayers = Array.from(room.players.values()).filter(p => p.alive);
+        if (room.votes.size >= alivePlayers.length) {
+            const voteCount = new Map();
+            
+            room.votes.forEach(targetId => {
+                voteCount.set(targetId, (voteCount.get(targetId) || 0) + 1);
+            });
+            
+            let maxVotes = 0;
+            let votedOutId = null;
+            
+            voteCount.forEach((votes, playerId) => {
+                if (votes > maxVotes) {
+                    maxVotes = votes;
+                    votedOutId = playerId;
+                }
+            });
+            
+            const votedOutPlayer = room.players.get(votedOutId);
+            const imposterPlayer = room.players.get(room.imposterId);
+            
+            room.gamePhase = 'result';
+            
+            io.to(room.id).emit('game-ended', {
+                winner: votedOutId === room.imposterId ? 'crewmates' : 'imposter',
+                message: votedOutId === room.imposterId ? 
+                    '🎉 Багийн гишүүд яллаа! Imposter-г илрүүллээ!' : 
+                    '💀 Imposter яллаа! Багийн гишүүд буруу хүнийг сонголоо!',
+                votedOut: votedOutPlayer,
+                imposter: imposterPlayer,
+                votes: Array.from(voteCount.entries()).map(([playerId, votes]) => ({
+                    playerId,
+                    playerName: room.players.get(playerId).name,
+                    votes
+                })),
+                room: room.getGameState()
+            });
+        }
+    });
+
+    // Чат мессеж
+    socket.on('chat-message', (message) => {
+        const room = findPlayerRoom(socket.id);
+        
+        if (!room) return;
+
+        const player = room.players.get(socket.id);
+        if (!player || !player.alive) return;
+
+        const messageData = {
+            id: uuidv4(),
+            playerId: socket.id,
+            playerName: player.name,
+            text: message,
+            timestamp: new Date()
+        };
+
+        room.messages.push(messageData);
+        
+        // Бүх тоглогчид руу мессеж илгээх
+        io.to(room.id).emit('chat-message', messageData);
+        
+        console.log(`${player.name}: ${message}`);
+    });
+
+    // Санал өгөх
+    socket.on('vote', (targetId) => {
+        const room = findPlayerRoom(socket.id);
+        
+        if (!room || room.gamePhase !== 'voting') {
+            socket.emit('error', 'Санал өгөх үе биш');
+            return;
+        }
+
+        const voter = room.players.get(socket.id);
+        if (!voter || !voter.alive) {
+            socket.emit('error', 'Та санал өгөх эрхгүй байна');
+            return;
+        }
+
+        if (room.addVote(socket.id, targetId)) {
+            socket.emit('vote-cast', { targetId });
+            
+            // Бүх санал ирсэн үү?
+            const alivePlayers = Array.from(room.players.values()).filter(p => p.alive);
+            if (room.votes.size >= alivePlayers.length) {
+                const result = room.checkVotingResult();
+                if (result) {
+                    io.to(room.id).emit('game-ended', result);
+                }
+            }
+        }
+    });
+
+    // Санал хураалт эхлүүлэх
+    socket.on('start-voting', () => {
+        const room = findPlayerRoom(socket.id);
+        
+        if (!room || room.gamePhase !== 'discussion') {
+            socket.emit('error', 'Санал хураалт эхлүүлэх боломжгүй');
+            return;
+        }
+
+        room.gamePhase = 'voting';
+        room.votes.clear();
+        
+        io.to(room.id).emit('voting-started', {
+            room: room.getGameState()
+        });
+    });
+
+    // Тоглоомыг дахин эхлүүлэх
+    socket.on('restart-game', () => {
+        const room = findPlayerRoom(socket.id);
+        
+        if (!room) return;
+
+        room.gamePhase = 'waiting';
+        room.imposterId = null;
+        room.currentTopic = null;
+        room.votes.clear();
+        room.messages = [];
+
+        room.players.forEach(player => {
+            player.role = 'crewmate';
+            player.alive = true;
+        });
+
+        io.to(room.id).emit('game-restarted', room.getGameState());
+    });
+
+    // Холболт салсан үед
+    socket.on('disconnect', () => {
+        console.log('Хэрэглэгч саллаа:', socket.id);
+        
+        const room = findPlayerRoom(socket.id);
+        if (room) {
+            const player = room.players.get(socket.id);
+            if (player) {
+                room.removePlayer(socket.id);
+                
+                // Өрөө хоосорбол устгах
+                if (room.players.size === 0) {
+                    rooms.delete(room.id);
+                    console.log(`Өрөө устгагдлаа: ${room.id}`);
+                } else {
+                    // Бусад тоглогчид руу мэдэгдэх
+                    io.to(room.id).emit('player-left', {
+                        playerName: player.name,
+                        room: room.getGameState()
+                    });
+                }
+            }
+        }
+    });
+});
+
+// Туслах функцууд
+function findPlayerRoom(socketId) {
+    for (const [roomId, room] of rooms) {
+        if (room.players.has(socketId)) {
+            return room;
+        }
+    }
+    return null;
+}
+
+// Express route
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get('/room/:roomId', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Server start
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`🚀 Монгол Imposter тоглоом эхэллээ!`);
+    console.log(`🌐 Сервер: http://localhost:${PORT}`);
+    console.log(`📱 Хөтчөөр нээж болно: http://localhost:${PORT}`);
+});
