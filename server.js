@@ -48,8 +48,10 @@ class Room {
         this.gamePhase = 'waiting'; // waiting, discussion, voting, result
         this.imposterId = null;
         this.currentTopic = null;
+        this.creatorId = null; // Өрөө үүсгэгчийн ID
+        this.selectedTopic = null; // Сонгосон сэдэв
         this.votes = new Map();
-        this.messages = [];
+        this.messages = []; // Хүлээлгэний үеийн чат мессежүүд
         this.maxPlayers = 5;
     }
 
@@ -64,10 +66,17 @@ class Room {
             role: 'crewmate',
             alive: true,
             avatar: this.getAvatar(this.players.size),
-            joinedAt: new Date()
+            joinedAt: new Date(),
+            isCreator: this.players.size === 0 // Эхний орж ирэх хүн үүсгэгч болно
         };
 
         this.players.set(socketId, player);
+        
+        // Хэрэв эхний тоглогч бол үүсгэгч болгох
+        if (this.players.size === 1) {
+            this.creatorId = socketId;
+        }
+        
         return true;
     }
 
@@ -86,6 +95,11 @@ class Room {
             return false;
         }
 
+        // Хэрэв сэдэв сонгоогүй бол автоматаар сонгох
+        if (!this.selectedTopic) {
+            this.selectedTopic = mongolianTopics[Math.floor(Math.random() * mongolianTopics.length)];
+        }
+
         // Санамсаргүйгээр нэгийг нь Imposter болгох
         const playerIds = Array.from(this.players.keys());
         const imposterIndex = Math.floor(Math.random() * playerIds.length);
@@ -97,11 +111,10 @@ class Room {
             player.alive = true;
         });
 
-        // Санамсаргүй сэдэв сонгох
-        this.currentTopic = mongolianTopics[Math.floor(Math.random() * mongolianTopics.length)];
+        this.currentTopic = this.selectedTopic;
         this.gamePhase = 'discussion';
         this.votes.clear();
-        this.messages = [];
+        this.messages = []; // Тоглоомын чатыг цэвэрлэх
 
         return true;
     }
@@ -164,10 +177,26 @@ class Room {
             players: Array.from(this.players.values()),
             gamePhase: this.gamePhase,
             currentTopic: this.currentTopic,
+            selectedTopic: this.selectedTopic,
             playerCount: this.players.size,
             maxPlayers: this.maxPlayers,
-            messages: this.messages
+            messages: this.messages,
+            creatorId: this.creatorId
         };
+    }
+
+    // Сэдэв сонгох функц
+    selectTopic(topic) {
+        if (mongolianTopics.includes(topic)) {
+            this.selectedTopic = topic;
+            return true;
+        }
+        return false;
+    }
+
+    // Бүх сэдвүүдийг авах
+    static getAllTopics() {
+        return mongolianTopics;
     }
 }
 
@@ -183,7 +212,12 @@ io.on('connection', (socket) => {
         if (room.addPlayer(socket.id, playerName)) {
             rooms.set(roomId, room);
             socket.join(roomId);
-            socket.emit('room-created', { roomId, room: room.getGameState() });
+            socket.emit('room-created', { 
+                roomId, 
+                room: room.getGameState(),
+                isCreator: true,
+                topics: Room.getAllTopics()
+            });
             console.log(`${playerName} өрөө үүсгэлээ: ${roomId}`);
         } else {
             socket.emit('error', 'Өрөө үүсгэхэд алдаа гарлаа');
@@ -201,17 +235,79 @@ io.on('connection', (socket) => {
 
         if (room.addPlayer(socket.id, playerName)) {
             socket.join(roomId);
-            socket.emit('room-joined', { roomId, room: room.getGameState() });
+            const player = room.players.get(socket.id);
+            socket.emit('room-joined', { 
+                roomId, 
+                room: room.getGameState(),
+                isCreator: player.isCreator,
+                selectedTopic: room.selectedTopic
+            });
             
             // Бүх тоглогчид руу шинэ тоглогчийн мэдээллийг илгээх
             io.to(roomId).emit('player-joined', {
-                player: room.players.get(socket.id),
+                player: player,
                 room: room.getGameState()
             });
             
             console.log(`${playerName} өрөөнд орлоо: ${roomId}`);
         } else {
             socket.emit('error', 'Өрөө дүүрэн байна');
+        }
+    });
+
+    // Хүлээлгэний үеийн чат мессеж
+    socket.on('waiting-chat-message', (message) => {
+        const room = findPlayerRoom(socket.id);
+        
+        if (!room || room.gamePhase !== 'waiting') {
+            socket.emit('error', 'Хүлээлгэний үе биш');
+            return;
+        }
+
+        const player = room.players.get(socket.id);
+        if (!player) return;
+
+        const messageData = {
+            id: uuidv4(),
+            playerId: socket.id,
+            playerName: player.name,
+            text: message,
+            timestamp: new Date()
+        };
+
+        room.messages.push(messageData);
+        
+        // Бүх тоглогчид руу мессеж илгээх
+        io.to(room.id).emit('waiting-chat-message', messageData);
+        
+        console.log(`[Хүлээлгээ] ${player.name}: ${message}`);
+    });
+
+    // Сэдэв сонгох
+    socket.on('select-topic', (topic) => {
+        const room = findPlayerRoom(socket.id);
+        
+        if (!room) {
+            socket.emit('error', 'Та өрөөнд байхгүй байна');
+            return;
+        }
+
+        // Зөвхөн өрөө үүсгэгч л сэдэв сонгох боломжтой
+        if (socket.id !== room.creatorId) {
+            socket.emit('error', 'Зөвхөн өрөө үүсгэгч л сэдэв сонгох боломжтой');
+            return;
+        }
+
+        if (room.selectTopic(topic)) {
+            // Бүх тоглогчид руу сонгосон сэдвийг илгээх
+            io.to(room.id).emit('topic-selected', {
+                topic: topic,
+                room: room.getGameState()
+            });
+            
+            console.log(`Сэдэв сонгогдлоо: ${topic}`);
+        } else {
+            socket.emit('error', 'Сэдэв сонгох боломжгүй');
         }
     });
 
