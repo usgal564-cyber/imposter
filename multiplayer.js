@@ -29,7 +29,7 @@ class MultiplayerImposterGame {
             
             // Хэрэв үүсгэгч бол сэдвүүдийг харуулах
             if (data.isCreator) {
-                this.showTopicSelection(data.topics);
+                this.showTopicSelection(data.topics, data.categories);
             }
         });
 
@@ -148,6 +148,24 @@ class MultiplayerImposterGame {
             this.addWaitingMessage(data.playerName, data.text, data.playerId === this.socket.id);
         });
 
+        // Санамсаргүй сэдэв сонгогдсон
+        this.socket.on('random-topic-selected', (data) => {
+            this.currentRoom = data.room;
+            this.showSelectedTopic(data.topic, data.category);
+            this.addSystemMessage(`🎲 Санамсаргүй сэдэв сонгогдлоо: ${data.topic} (${data.category})`);
+        });
+
+        // Тоглоом дуусгагдлаа
+        this.socket.on('game-ended-by-creator', (data) => {
+            this.currentRoom = data.room;
+            this.gamePhase = 'waiting';
+            this.showScreen('waiting-screen');
+            this.updateRoomInfo(data.room);
+            this.clearMessages();
+            this.addSystemMessage(data.message);
+            this.showTopicSelection(this.allTopics, this.allCategories);
+        });
+
         // Сэдэв сонгогдсон
         this.socket.on('topic-selected', (data) => {
             this.currentRoom = data.room;
@@ -246,7 +264,19 @@ class MultiplayerImposterGame {
 
         // Сэдвийг өөрчлөх товч
         document.getElementById('change-topic-btn').addEventListener('click', () => {
-            this.showTopicSelection(this.allTopics);
+            this.showTopicSelection(this.allTopics, this.allCategories);
+        });
+
+        // Санамсаргүй сэдэв сонгох товч
+        document.getElementById('random-topic-btn').addEventListener('click', () => {
+            this.selectRandomTopic();
+        });
+
+        // Тоглоом дуусгах товч
+        document.getElementById('end-game-btn').addEventListener('click', () => {
+            if (confirm('Та тоглоомыг дуусгахдаа итгэлтэй байна уу?')) {
+                this.socket.emit('end-game');
+            }
         });
 
         // Хариулт илгээх
@@ -349,7 +379,6 @@ class MultiplayerImposterGame {
                 playerCard.innerHTML = `
                     <div class="player-avatar">${player.avatar}</div>
                     <div class="player-name">${player.name}</div>
-                    <div class="player-status">${player.alive ? 'Амьд' : 'Насбарсан'}</div>
                 `;
                 waitingGrid.appendChild(playerCard);
             });
@@ -361,21 +390,83 @@ class MultiplayerImposterGame {
         if (!playersGrid) return;
 
         playersGrid.innerHTML = '';
+        
         room.players.forEach(player => {
             const playerCard = document.createElement('div');
             playerCard.className = 'player-card';
+            
+            // Өөрийн дүрийн өнгө
+            if (player.id === this.socket.id) {
+                if (player.role === 'imposter') {
+                    playerCard.classList.add('player-self-imposter');
+                } else {
+                    playerCard.classList.add('player-self-crewmate');
+                }
+            } else {
+                // Бусад тоглогчдыг үргэлж ногоон өнгөөр харуулах
+                playerCard.classList.add('player-crewmate');
+            }
+            
             playerCard.innerHTML = `
                 <div class="player-avatar">${player.avatar}</div>
                 <div class="player-name">${player.name}</div>
-                <div class="player-status">${player.alive ? 'Амьд' : 'Насбарсан'}</div>
+                <div class="role-indicator ${player.id === this.socket.id ? player.role : 'crewmate'}"></div>
             `;
+            
             playersGrid.appendChild(playerCard);
         });
-
-        // Тоглогчдын тоог шинэчлэх
+        
         const playerCount = document.getElementById('player-count');
         if (playerCount) {
             playerCount.textContent = room.playerCount;
+        }
+    }
+
+    // Хүлээлгэний дэлгэцэд тоглогчдыг харуулах
+    updateRoomInfo(room) {
+        const roomCode = document.getElementById('current-room-code');
+        const playerCount = document.getElementById('current-players');
+        const playersGrid = document.getElementById('waiting-players-grid');
+        const startGameBtn = document.getElementById('start-game-btn');
+        const endGameBtn = document.getElementById('end-game-btn');
+        
+        if (roomCode) roomCode.textContent = room.id;
+        if (playerCount) playerCount.textContent = `${room.playerCount}/5`;
+        
+        if (playersGrid) {
+            playersGrid.innerHTML = '';
+            room.players.forEach(player => {
+                const playerDiv = document.createElement('div');
+                playerDiv.className = 'player-item';
+                
+                // Өөрийн дүрийн өнгө
+                if (player.id === this.socket.id) {
+                    if (player.role === 'imposter') {
+                        playerDiv.classList.add('player-self-imposter');
+                    } else {
+                        playerDiv.classList.add('player-self-crewmate');
+                    }
+                } else {
+                    playerDiv.classList.add('player-crewmate');
+                }
+                
+                playerDiv.innerHTML = `
+                    <span class="player-avatar">${player.avatar}</span>
+                    <span>${player.name}</span>
+                    ${player.isCreator ? '👑' : ''}
+                    <div class="role-indicator ${player.id === this.socket.id ? player.role : 'crewmate'}"></div>
+                `;
+                playersGrid.appendChild(playerDiv);
+            });
+        }
+        
+        // Товчнуудыг харуулах/нуух
+        if (this.isCreator) {
+            if (startGameBtn) startGameBtn.style.display = 'inline-block';
+            if (endGameBtn) endGameBtn.style.display = 'inline-block';
+        } else {
+            if (startGameBtn) startGameBtn.style.display = 'none';
+            if (endGameBtn) endGameBtn.style.display = 'none';
         }
     }
 
@@ -551,8 +642,9 @@ class MultiplayerImposterGame {
     }
 
     // Сэдэв сонголтын функцүүд
-    showTopicSelection(topics) {
+    showTopicSelection(topics, categories) {
         this.allTopics = topics;
+        this.allCategories = categories;
         const creatorControls = document.getElementById('creator-controls');
         const topicSelection = document.getElementById('topic-selection');
         const selectedTopic = document.getElementById('selected-topic');
@@ -566,18 +658,59 @@ class MultiplayerImposterGame {
             topicSelection.style.display = 'block';
             selectedTopic.style.display = 'none';
             
-            // Сэдвүүдийг харуулах
+            // Ангиллууд болон сэдвүүдийг харуулах
             topicsGrid.innerHTML = '';
-            topics.forEach(topic => {
-                const topicOption = document.createElement('div');
-                topicOption.className = 'topic-option';
-                topicOption.textContent = topic;
-                topicOption.addEventListener('click', () => {
-                    this.selectTopicOption(topic);
+            
+            // Санамсаргүй сэдэв товч
+            const randomBtn = document.createElement('button');
+            randomBtn.id = 'random-topic-btn';
+            randomBtn.className = 'btn-secondary';
+            randomBtn.textContent = '🎲 Санамсаргүй сэдэв сонгох';
+            randomBtn.style.marginBottom = '20px';
+            randomBtn.style.width = '100%';
+            topicsGrid.appendChild(randomBtn);
+            
+            // Ангиллуудыг харуулах
+            Object.entries(categories).forEach(([categoryKey, categoryTopics]) => {
+                const categorySection = document.createElement('div');
+                categorySection.className = 'category-section';
+                categorySection.innerHTML = `
+                    <h4>📁 ${this.getCategoryName(categoryKey)}</h4>
+                    <div class="category-topics"></div>
+                `;
+                
+                const categoryTopicsDiv = categorySection.querySelector('.category-topics');
+                categoryTopics.forEach(topic => {
+                    const topicOption = document.createElement('div');
+                    topicOption.className = 'topic-option';
+                    topicOption.textContent = topic;
+                    topicOption.addEventListener('click', () => {
+                        this.selectTopicOption(topic);
+                    });
+                    categoryTopicsDiv.appendChild(topicOption);
                 });
-                topicsGrid.appendChild(topicOption);
+                
+                topicsGrid.appendChild(categorySection);
             });
         }
+    }
+
+    getCategoryName(key) {
+        const names = {
+            clothing: '👕 Хувцас',
+            brands: '🏷️ Брэндүүд',
+            movies: '🎬 Кинонууд',
+            music: '🎵 Хөгжим',
+            food: '🍽 Хоол',
+            sports: '⚽ Спорт',
+            technology: '💻 Технологи',
+            animals: '🐾 Амьтад'
+        };
+        return names[key] || key;
+    }
+
+    selectRandomTopic() {
+        this.socket.emit('select-random-topic');
     }
 
     selectTopicOption(topic) {
