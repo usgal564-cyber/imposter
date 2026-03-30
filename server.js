@@ -437,9 +437,12 @@ io.on('connection', (socket) => {
 
     // Өрөөнд орох
     socket.on('join-room', ({ roomId, playerName }) => {
+        console.log(`Өрөөнд орох хүсэлт: ${playerName}, Код: ${roomId}`);
+        
         const room = rooms.get(roomId);
         
         if (!room) {
+            console.log(`Өрөө олдсонгүй: ${roomId}`);
             socket.emit('error', 'Өрөө олдсонгүй');
             return;
         }
@@ -447,6 +450,8 @@ io.on('connection', (socket) => {
         if (room.addPlayer(socket.id, playerName)) {
             socket.join(roomId);
             const player = room.players.get(socket.id);
+            console.log(`${playerName} өрөөнд орлоо: ${roomId}, Дүр: ${player.role}`);
+            
             socket.emit('room-joined', { 
                 roomId, 
                 room: room.getGameState(),
@@ -462,6 +467,7 @@ io.on('connection', (socket) => {
             
             console.log(`${playerName} өрөөнд орлоо: ${roomId}`);
         } else {
+            console.log(`Өрөө дүүрэн байна: ${roomId}`);
             socket.emit('error', 'Өрөө дүүрэн байна');
         }
     });
