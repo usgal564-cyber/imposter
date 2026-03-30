@@ -41,11 +41,75 @@ const mongolianTopics = [
     "Төрийн далбааны утга учир"
 ];
 
+// Асуултууд
+const questions = [
+    {
+        question: "Монгол Улсын нийслэл хаана вэ?",
+        answers: ["Улаанбаатар", "Эрдэнэт", "Дархан", "Чойбалсан"]
+    },
+    {
+        question: "Чингис хаан хэдэн онд төрсэн бэ?",
+        answers: ["1162 он", "1155 он", "1206 он", "1189 он"]
+    },
+    {
+        question: "Монголын үндэсний бөхийн нэр юу вэ?",
+        answers: ["Морь", "Тэмээ", "Үхэр", "Ямаа"]
+    },
+    {
+        question: "Монгол улсын тугийн өнгө ямар вэ?",
+        answers: ["Улаан, цэнхэр, хөх", "Улаан, цагаан, хар", "Улаан, хөх, ногоон", "Улаан, шар, хөх"]
+    },
+    {
+        question: "Монголын хамгийн том наадам юу вэ?",
+        answers: ["Наадам", "Цагаан сар", "Үндэсний баяр", "Сүлд баяр"]
+    },
+    {
+        question: "Монгол хэлний дүрэмж хэдэн үсэгтэй вэ?",
+        answers: ["35", "26", "33", "28"]
+    },
+    {
+        question: "Говь гэж юуг хэлдэг вэ?",
+        answers: ["Хуурай талбай", "Уул нуруу", "Ой хөвч", "Нуур гол"]
+    },
+    {
+        question: "Монголын анхны хаан хэн бэ?",
+        answers: ["Мөнх хаан", "Чингис хаан", "Өгэдэй хаан", "Хубилай хаан"]
+    },
+    {
+        question: "Монголын үндэсний хоол юу вэ?",
+        answers: ["Бууз", "Хуушуур", "Цуйван", "Банш"]
+    },
+    {
+        question: "Монгол Улс хэдэн аймагт хуваагддаг вэ?",
+        answers: ["21", "22", "23", "20"]
+    },
+    {
+        question: "Монголын үндэсний хувцасыг юу гэдэг вэ?",
+        answers: ["Дээл", "Хувцас", "Гутал", "Малгай"]
+    },
+    {
+        question: "Монголын хамгийн өндөр уул юу вэ?",
+        answers: ["Хүйтэн хайрхан", "Алтай овоо", "Отгонтэнгэр", "Сүхбаатар"]
+    },
+    {
+        question: "Монголын үндэсний тоглоом юу вэ?",
+        answers: ["Шагай", "Хэл хэтэг", "Домбир", "Тоглоом"]
+    },
+    {
+        question: "Монголын үндэсний уран зураг юу вэ?",
+        answers: ["Монгол зураг", "Уран зураг", "Зураг", "Дүрслэл"]
+    },
+    {
+        question: "Монгол Улсын мөнгөний нэгж юу вэ?",
+        answers: ["Төгрөг", "Юань", "Доллар", "Евро"]
+    }
+];
+
 class Room {
     constructor(roomId) {
         this.id = roomId;
         this.players = new Map();
-        this.gamePhase = 'waiting'; // waiting, discussion, voting, result
+        this.gamePhase = 'waiting'; // waiting, discussion, voting, result, question, final_guess
         this.imposterId = null;
         this.currentTopic = null;
         this.creatorId = null; // Өрөө үүсгэгчийн ID
@@ -53,6 +117,12 @@ class Room {
         this.votes = new Map();
         this.messages = []; // Хүлээлгэний үеийн чат мессежүүд
         this.maxPlayers = 5;
+        this.currentRound = 0;
+        this.maxRounds = 5;
+        this.currentQuestion = null;
+        this.correctAnswer = null;
+        this.usedQuestions = [];
+        this.playerAnswers = new Map();
     }
 
     addPlayer(socketId, playerName) {
@@ -128,47 +198,80 @@ class Room {
         return true;
     }
 
-    checkVotingResult() {
-        const voteCount = new Map();
-        
-        this.votes.forEach(targetId => {
-            voteCount.set(targetId, (voteCount.get(targetId) || 0) + 1);
-        });
-
-        let maxVotes = 0;
-        let votedOutId = null;
-
-        voteCount.forEach((votes, playerId) => {
-            if (votes > maxVotes) {
-                maxVotes = votes;
-                votedOutId = playerId;
-            }
-        });
-
-        if (votedOutId) {
-            const votedOutPlayer = this.players.get(votedOutId);
-            votedOutPlayer.alive = false;
-
-            const imposterPlayer = this.players.get(this.imposterId);
-            
-            if (votedOutId === this.imposterId) {
-                this.gamePhase = 'result';
-                return {
-                    winner: 'crewmates',
-                    message: '🎉 Багийн гишүүд яллаа! Imposter-г илрүүллээ!',
-                    votedOut: votedOutPlayer
-                };
-            } else {
-                this.gamePhase = 'result';
-                return {
-                    winner: 'imposter',
-                    message: '💀 Imposter яллаа! Багийн гишүүд буруу хүнийг саналаар хаслаа!',
-                    votedOut: votedOutPlayer
-                };
-            }
+    // Асуулт сонгох функц
+    selectRandomQuestion() {
+        const availableQuestions = questions.filter(q => !this.usedQuestions.includes(q.question));
+        if (availableQuestions.length === 0) {
+            // Бүх асуултууд ашиглагдсан бол дахин эхлэх
+            this.usedQuestions = [];
+            return this.selectRandomQuestion();
         }
+        
+        const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+        const selectedQuestion = availableQuestions[randomIndex];
+        
+        this.currentQuestion = selectedQuestion.question;
+        this.correctAnswer = selectedQuestion.answers[0]; // Эхний хариулт зөв
+        this.usedQuestions.push(selectedQuestion.question);
+        
+        return {
+            question: selectedQuestion.question,
+            answers: selectedQuestion.answers.sort(() => Math.random() - 0.5) // Хариултуудыг санамсаргүй эрэмбэлэх
+        };
+    }
 
+    // Хариулт шалгах функц
+    checkAnswer(playerId, answer) {
+        const player = this.players.get(playerId);
+        if (!player || !player.alive) return false;
+        
+        const isCorrect = answer === this.correctAnswer;
+        this.playerAnswers.set(playerId, { answer, isCorrect });
+        
+        return isCorrect;
+    }
+
+    // Раунд шалгах функц
+    checkRoundEnd() {
+        const alivePlayers = Array.from(this.players.values()).filter(p => p.alive);
+        const answersCount = this.playerAnswers.size;
+        
+        // Бүх амьд тоглогчид хариулсан эсэх
+        if (answersCount >= alivePlayers.length) {
+            // Буруу хариулсан тоглогчдыг хасах
+            let eliminatedCount = 0;
+            this.playerAnswers.forEach((answerData, playerId) => {
+                if (!answerData.isCorrect) {
+                    const player = this.players.get(playerId);
+                    if (player) {
+                        player.alive = false;
+                        eliminatedCount++;
+                    }
+                }
+            });
+            
+            this.currentRound++;
+            this.playerAnswers.clear();
+            
+            // Үлдсэн тоглогчид
+            const remainingPlayers = Array.from(this.players.values()).filter(p => p.alive);
+            
+            return {
+                eliminated: eliminatedCount,
+                remaining: remainingPlayers.length,
+                round: this.currentRound,
+                isFinalRound: this.currentRound >= this.maxRounds || remainingPlayers.length <= 2
+            };
+        }
+        
         return null;
+    }
+
+    // Эцсийн таамаглалтын үе
+    startFinalGuess() {
+        this.gamePhase = 'final_guess';
+        const remainingPlayers = Array.from(this.players.values()).filter(p => p.alive);
+        return remainingPlayers;
     }
 
     getGameState() {
@@ -181,7 +284,11 @@ class Room {
             playerCount: this.players.size,
             maxPlayers: this.maxPlayers,
             messages: this.messages,
-            creatorId: this.creatorId
+            creatorId: this.creatorId,
+            currentRound: this.currentRound,
+            maxRounds: this.maxRounds,
+            currentQuestion: this.currentQuestion,
+            remainingPlayers: Array.from(this.players.values()).filter(p => p.alive).length
         };
     }
 
@@ -320,19 +427,133 @@ io.on('connection', (socket) => {
             return;
         }
 
-        if (room.startGame()) {
-            // Тоглогч бүрт өөрийн дүрийг илгээх
-            room.players.forEach((player, playerId) => {
-                io.to(playerId).emit('game-started', {
-                    role: player.role,
-                    topic: room.currentTopic,
-                    room: room.getGameState()
-                });
+        // Тоглоомын горимыг шинэчлэх - асуулт хариулт
+        room.gamePhase = 'question';
+        room.currentRound = 1;
+        
+        // Эхний асуултыг илгээх
+        const questionData = room.selectRandomQuestion();
+        
+        // Бүх тоглогчид руу мэдээлэх
+        room.players.forEach((player, playerId) => {
+            io.to(playerId).emit('question-phase-started', {
+                role: player.role,
+                topic: room.selectedTopic,
+                round: room.currentRound,
+                maxRounds: room.maxRounds,
+                question: questionData.question,
+                answers: questionData.answers,
+                room: room.getGameState()
+            });
+        });
+        
+        console.log(`Асуултын тоглоом эхэллээ: ${room.id}, Раунд: ${room.currentRound}`);
+    });
+
+    // Хариулт илгээх
+    socket.on('submit-answer', (answer) => {
+        const room = findPlayerRoom(socket.id);
+        
+        if (!room || room.gamePhase !== 'question') {
+            socket.emit('error', 'Асуултын үе биш');
+            return;
+        }
+
+        const isCorrect = room.checkAnswer(socket.id, answer);
+        
+        socket.emit('answer-result', {
+            correct: isCorrect,
+            answer: answer
+        });
+        
+        // Раунд дууссан эсэх шалгах
+        const roundResult = room.checkRoundEnd();
+        if (roundResult) {
+            io.to(room.id).emit('round-ended', {
+                round: roundResult.round,
+                eliminated: roundResult.eliminated,
+                remaining: roundResult.remaining,
+                isFinalRound: roundResult.isFinalRound,
+                room: room.getGameState()
             });
             
-            console.log(`Тоглоом эхэллээ: ${room.id}, Сэдэв: ${room.currentTopic}`);
-        } else {
-            socket.emit('error', 'Тоглоом эхлүүлэхэд алдаа гарлаа. Хамгийн багадаа 3 тоглогч хэрэгтэй.');
+            if (roundResult.isFinalRound) {
+                // Эцсийн таамаглалтын үе
+                const remainingPlayers = room.startFinalGuess();
+                io.to(room.id).emit('final-guess-phase', {
+                    remainingPlayers: remainingPlayers,
+                    room: room.getGameState()
+                });
+            } else {
+                // Дараагийн раунд
+                setTimeout(() => {
+                    const nextQuestion = room.selectRandomQuestion();
+                    room.gamePhase = 'question';
+                    
+                    room.players.forEach((player, playerId) => {
+                        if (player.alive) {
+                            io.to(playerId).emit('next-question', {
+                                round: room.currentRound,
+                                question: nextQuestion.question,
+                                answers: nextQuestion.answers,
+                                room: room.getGameState()
+                            });
+                        }
+                    });
+                }, 3000);
+            }
+        }
+    });
+
+    // Эцсийн таамаглалт
+    socket.on('submit-final-vote', (targetId) => {
+        const room = findPlayerRoom(socket.id);
+        
+        if (!room || room.gamePhase !== 'final_guess') {
+            socket.emit('error', 'Эцсийн таамаглалтын үе биш');
+            return;
+        }
+
+        room.votes.set(socket.id, targetId);
+        
+        // Бүх санал ирсэн үү?
+        const alivePlayers = Array.from(room.players.values()).filter(p => p.alive);
+        if (room.votes.size >= alivePlayers.length) {
+            const voteCount = new Map();
+            
+            room.votes.forEach(targetId => {
+                voteCount.set(targetId, (voteCount.get(targetId) || 0) + 1);
+            });
+            
+            let maxVotes = 0;
+            let votedOutId = null;
+            
+            voteCount.forEach((votes, playerId) => {
+                if (votes > maxVotes) {
+                    maxVotes = votes;
+                    votedOutId = playerId;
+                }
+            });
+            
+            const votedOutPlayer = room.players.get(votedOutId);
+            const imposterPlayer = room.players.get(room.imposterId);
+            
+            room.gamePhase = 'result';
+            
+            io.to(room.id).emit('game-ended', {
+                winner: votedOutId === room.imposterId ? 'crewmates' : 'imposter',
+                message: votedOutId === room.imposterId ? 
+                    '🎉 Багийн гишүүд яллаа! Imposter-г илрүүллээ!' : 
+                    '💀 Imposter яллаа! Багийн гишүүд буруу хүнийг сонголоо!',
+                votedOut: votedOutPlayer,
+                imposter: imposterPlayer,
+                votes: Array.from(voteCount.entries()).map(([playerId, votes]) => ({
+                    playerId,
+                    playerName: room.players.get(playerId).name,
+                    votes
+                })),
+                room: room.getGameState()
+            });
         }
     });
 
