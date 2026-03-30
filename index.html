@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Imposter Тоглоом - Монгол хувилбар</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div class="game-container">
+        <header>
+            <h1>🎭 Imposter Тоглоом</h1>
+            <p>5 тоглогч, 1 хуулгаар, хэн болохыг олоорой!</p>
+        </header>
+
+        <main>
+            <!-- Өрөө үүсгэх/Нэхэх хэсэг -->
+            <section id="lobby-screen" class="screen active">
+                <div class="lobby-content">
+                    <h2>🎮 Өрөөнд орох</h2>
+                    <div class="name-input">
+                        <input type="text" id="player-name-input" placeholder="Таны нэр..." maxlength="15">
+                    </div>
+                    <div class="room-actions">
+                        <button id="create-room-btn" class="btn-primary">Шинэ өрөө үүсгэх</button>
+                        <div class="join-room">
+                            <input type="text" id="room-code-input" placeholder="Өрөөний код..." maxlength="6">
+                            <button id="join-room-btn" class="btn-secondary">Орох</button>
+                        </div>
+                    </div>
+                    <div class="room-info" id="room-info" style="display: none;">
+                        <h3>🏠 Өрөөний мэдээлэл</h3>
+                        <p>Код: <span id="current-room-code"></span></p>
+                        <p>Тоглогчид: <span id="current-players"></span>/5</p>
+                        <div class="players-list" id="players-list"></div>
+                        <button id="start-game-btn" class="btn-primary">Тоглоом эхлүүлэх</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Хүлээх хэсэг -->
+            <section id="waiting-screen" class="screen">
+                <div class="waiting-content">
+                    <h2>⏳ Хүлээлгээ</h2>
+                    <p>Бусад тоглогчид ирэхийг хүлээж байна...</p>
+                    <div class="players-grid" id="waiting-players-grid"></div>
+                    <div class="room-code-display">
+                        <h3>🔑 Өрөөний код</h3>
+                        <div class="code-box" id="room-code-display"></div>
+                        <p>Энэ кодыг найзууддаа илгээж болно!</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Тоглогчдын жагсаалт -->
+            <section id="players-screen" class="screen">
+                <div class="players-content">
+                    <h2>👥 Тоглогчид</h2>
+                    <div class="players-grid" id="players-grid">
+                        <!-- Тоглогчид энд нэмэгдэнэ -->
+                    </div>
+                    <div class="game-info">
+                        <p>Таны дүр: <span id="player-role" class="role-badge"></span></p>
+                        <p>Тоглогчдын тоо: <span id="player-count">5</span></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Хэлэлцүүлгийн хэсэг -->
+            <section id="discussion-screen" class="screen">
+                <div class="discussion-content">
+                    <div class="topic-display">
+                        <h3>� Хэлэлцүүлгийн сэдэв</h3>
+                        <p id="discussion-topic"></p>
+                    </div>
+                    <div class="chat-container">
+                        <div class="messages" id="messages">
+                            <!-- Зурвасууд энд гарна -->
+                        </div>
+                        <div class="chat-input">
+                            <input type="text" id="message-input" placeholder="Санал бичих..." maxlength="100">
+                            <button id="send-message-btn" class="btn-secondary">Илгээх</button>
+                        </div>
+                    </div>
+                    <div class="voting-section">
+                        <h3>🗳️ Санал хураалт</h3>
+                        <button id="start-voting-btn" class="btn-warning">Санал хураалт эхлүүлэх</button>
+                        <div class="voting-grid" id="voting-grid" style="display: none;">
+                            <!-- Санал хураалтын сонголтууд -->
+                        </div>
+                        <button id="vote-btn" class="btn-primary" style="display: none;">Санал өгөх</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Үр дүн -->
+            <section id="result-screen" class="screen">
+                <div class="result-content">
+                    <h2 id="result-title">🎉 Тоглоом дуусав!</h2>
+                    <p id="result-message"></p>
+                    <div class="final-roles" id="final-roles">
+                        <!-- Бүх тоглогчийн дүрүүд -->
+                    </div>
+                    <button id="restart-btn" class="btn-primary">Дахин тоглох</button>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>🎮 Монгол хувилбар - Imposter тоглоом</p>
+        </footer>
+    </div>
+
+    <script src="multiplayer.js"></script>
+</body>
+</html>
