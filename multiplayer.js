@@ -669,14 +669,27 @@ class MultiplayerImposterGame {
 
     // Сэдэв сонголтын функцүүд
     showTopicSelection(topics, categories) {
-        this.allTopics = topics;
-        this.allCategories = categories;
+        console.log('showTopicSelection дуудагдлаа:', { topics, categories });
+        
+        this.allTopics = topics || [];
+        this.allCategories = categories || {};
+        
         const creatorControls = document.getElementById('creator-controls');
         const topicSelection = document.getElementById('topic-selection');
         const selectedTopic = document.getElementById('selected-topic');
         const topicsGrid = document.getElementById('topics-grid');
         
-        if (!creatorControls || !topicSelection || !topicsGrid) return;
+        console.log('DOM элементүүд:', { 
+            creatorControls: !!creatorControls, 
+            topicSelection: !!topicSelection, 
+            selectedTopic: !!selectedTopic, 
+            topicsGrid: !!topicsGrid 
+        });
+        
+        if (!creatorControls || !topicSelection || !topicsGrid) {
+            console.error('DOM элемент олдсонгүй!');
+            return;
+        }
         
         // Зөвхөн үүсгэгчид харагдах
         if (this.isCreator) {
@@ -697,27 +710,42 @@ class MultiplayerImposterGame {
             topicsGrid.appendChild(randomBtn);
             
             // Ангиллуудыг харуулах
-            Object.entries(categories).forEach(([categoryKey, categoryTopics]) => {
-                const categorySection = document.createElement('div');
-                categorySection.className = 'category-section';
-                categorySection.innerHTML = `
-                    <h4>📁 ${this.getCategoryName(categoryKey)}</h4>
-                    <div class="category-topics"></div>
-                `;
-                
-                const categoryTopicsDiv = categorySection.querySelector('.category-topics');
-                categoryTopics.forEach(topic => {
+            if (this.allCategories && Object.keys(this.allCategories).length > 0) {
+                Object.entries(this.allCategories).forEach(([categoryKey, categoryTopics]) => {
+                    const categorySection = document.createElement('div');
+                    categorySection.className = 'category-section';
+                    categorySection.innerHTML = `
+                        <h4>📁 ${this.getCategoryName(categoryKey)}</h4>
+                        <div class="category-topics"></div>
+                    `;
+                    
+                    const categoryTopicsDiv = categorySection.querySelector('.category-topics');
+                    categoryTopics.forEach(topic => {
+                        const topicOption = document.createElement('div');
+                        topicOption.className = 'topic-option';
+                        topicOption.textContent = topic;
+                        topicOption.addEventListener('click', (e) => {
+                            this.selectTopicOption(topic, e.target);
+                        });
+                        categoryTopicsDiv.appendChild(topicOption);
+                    });
+                    
+                    topicsGrid.appendChild(categorySection);
+                });
+            } else if (this.allTopics && this.allTopics.length > 0) {
+                // Хуучин сэдвүүдийг харуулах
+                this.allTopics.forEach(topic => {
                     const topicOption = document.createElement('div');
                     topicOption.className = 'topic-option';
                     topicOption.textContent = topic;
-                    topicOption.addEventListener('click', () => {
-                        this.selectTopicOption(topic);
+                    topicOption.addEventListener('click', (e) => {
+                        this.selectTopicOption(topic, e.target);
                     });
-                    categoryTopicsDiv.appendChild(topicOption);
+                    topicsGrid.appendChild(topicOption);
                 });
-                
-                topicsGrid.appendChild(categorySection);
-            });
+            } else {
+                topicsGrid.innerHTML = '<p>Сэдэв олдсонгүй!</p>';
+            }
         }
     }
 
@@ -739,14 +767,18 @@ class MultiplayerImposterGame {
         this.socket.emit('select-random-topic');
     }
 
-    selectTopicOption(topic) {
+    selectTopicOption(topic, element) {
+        console.log('selectTopicOption дуудагдлаа:', topic);
+        
         // Өмнөх сонголтыг цуцлах
         document.querySelectorAll('.topic-option').forEach(option => {
             option.classList.remove('selected');
         });
         
         // Шинэ сонголт
-        event.target.classList.add('selected');
+        if (element) {
+            element.classList.add('selected');
+        }
         this.selectedTopic = topic;
         
         // Сонгох товчийг харуулах
