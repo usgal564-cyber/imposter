@@ -22,16 +22,31 @@ class MultiplayerImposterGame {
 
         this.socket.on('room-created', (data) => {
             this.currentRoom = data.room;
+            this.isCreator = data.isCreator;
             this.showScreen('waiting-screen');
             this.updateRoomInfo(data.room);
             this.addSystemMessage(`🏠 Өрөө үүсгэгдлээ! Код: ${data.roomId}`);
+            
+            // Хэрэв үүсгэгч бол сэдвүүдийг харуулах
+            if (data.isCreator) {
+                this.showTopicSelection(data.topics);
+            }
         });
 
         this.socket.on('room-joined', (data) => {
             this.currentRoom = data.room;
+            this.isCreator = data.isCreator;
             this.showScreen('waiting-screen');
             this.updateRoomInfo(data.room);
             this.addSystemMessage(`🎮 өрөөнд орлоо!`);
+            
+            // Хэрэв сэдэв сонгогдсон бол харуулах
+            if (data.selectedTopic) {
+                this.showSelectedTopic(data.selectedTopic);
+            }
+            
+            // Хүлээлгэний чатыг идэвхжүүлэх
+            this.enableWaitingChat();
         });
 
         this.socket.on('player-joined', (data) => {
@@ -83,6 +98,18 @@ class MultiplayerImposterGame {
             this.updateRoomInfo(data);
             this.clearMessages();
             this.addSystemMessage('🔄 Тоглоом дахин эхэллээ!');
+        });
+
+        // Хүлээлгэний үеийн чат
+        this.socket.on('waiting-chat-message', (data) => {
+            this.addWaitingMessage(data.playerName, data.text, data.playerId === this.socket.id);
+        });
+
+        // Сэдэв сонгогдсон
+        this.socket.on('topic-selected', (data) => {
+            this.currentRoom = data.room;
+            this.showSelectedTopic(data.topic);
+            this.addSystemMessage(`📝 Сэдэв сонгогдлоо: ${data.topic}`);
         });
 
         this.socket.on('error', (message) => {
@@ -138,6 +165,28 @@ class MultiplayerImposterGame {
         // Санал хураалт эхлүүлэх
         document.getElementById('start-voting-btn').addEventListener('click', () => {
             this.socket.emit('start-voting');
+        });
+
+        // Хүлээлгэний үеийн чат
+        document.getElementById('send-waiting-message-btn').addEventListener('click', () => {
+            this.sendWaitingMessage();
+        });
+
+        // Enter товчоор хүлээлгэний чат илгээх
+        document.getElementById('waiting-message-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.sendWaitingMessage();
+            }
+        });
+
+        // Сэдэв сонгох товч
+        document.getElementById('select-topic-btn').addEventListener('click', () => {
+            this.selectTopic();
+        });
+
+        // Сэдвийг өөрчлөх товч
+        document.getElementById('change-topic-btn').addEventListener('click', () => {
+            this.showTopicSelection(this.allTopics);
         });
 
         // Санал өгөх
@@ -387,6 +436,132 @@ class MultiplayerImposterGame {
         const messagesContainer = document.getElementById('messages');
         if (messagesContainer) {
             messagesContainer.innerHTML = '';
+        }
+    }
+
+    // Хүлээлгэний үеийн чат функцүүд
+    sendWaitingMessage() {
+        const input = document.getElementById('waiting-message-input');
+        const message = input.value.trim();
+        
+        if (message === '') return;
+        
+        this.socket.emit('waiting-chat-message', message);
+        input.value = '';
+    }
+
+    addWaitingMessage(author, text, isOwn = false) {
+        const messagesContainer = document.getElementById('waiting-messages');
+        if (!messagesContainer) return;
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${isOwn ? 'own' : ''}`;
+        messageDiv.innerHTML = `
+            <div class="message-author">${author}</div>
+            <div class="message-text">${text}</div>
+        `;
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    enableWaitingChat() {
+        // Хүлээлгэний чат идэвхжүүлэх
+        const waitingInput = document.getElementById('waiting-message-input');
+        const waitingSendBtn = document.getElementById('send-waiting-message-btn');
+        
+        if (waitingInput) waitingInput.disabled = false;
+        if (waitingSendBtn) waitingSendBtn.disabled = false;
+    }
+
+    // Сэдэв сонголтын функцүүд
+    showTopicSelection(topics) {
+        this.allTopics = topics;
+        const creatorControls = document.getElementById('creator-controls');
+        const topicSelection = document.getElementById('topic-selection');
+        const selectedTopic = document.getElementById('selected-topic');
+        const topicsGrid = document.getElementById('topics-grid');
+        
+        if (!creatorControls || !topicSelection || !topicsGrid) return;
+        
+        // Зөвхөн үүсгэгчид харагдах
+        if (this.isCreator) {
+            creatorControls.style.display = 'block';
+            topicSelection.style.display = 'block';
+            selectedTopic.style.display = 'none';
+            
+            // Сэдвүүдийг харуулах
+            topicsGrid.innerHTML = '';
+            topics.forEach(topic => {
+                const topicOption = document.createElement('div');
+                topicOption.className = 'topic-option';
+                topicOption.textContent = topic;
+                topicOption.addEventListener('click', () => {
+                    this.selectTopicOption(topic);
+                });
+                topicsGrid.appendChild(topicOption);
+            });
+        }
+    }
+
+    selectTopicOption(topic) {
+        // Өмнөх сонголтыг цуцлах
+        document.querySelectorAll('.topic-option').forEach(option => {
+            option.classList.remove('selected');
+        });
+        
+        // Шинэ сонголт
+        event.target.classList.add('selected');
+        this.selectedTopic = topic;
+        
+        // Сонгох товчийг харуулах
+        const selectBtn = document.getElementById('select-topic-btn');
+        if (selectBtn) {
+            selectBtn.style.display = 'inline-block';
+        }
+    }
+
+    selectTopic() {
+        if (this.selectedTopic) {
+            this.socket.emit('select-topic', this.selectedTopic);
+        }
+    }
+
+    showSelectedTopic(topic) {
+        const topicSelection = document.getElementById('topic-selection');
+        const selectedTopic = document.getElementById('selected-topic');
+        const chosenTopicText = document.getElementById('chosen-topic-text');
+        
+        if (topicSelection && selectedTopic && chosenTopicText) {
+            topicSelection.style.display = 'none';
+            selectedTopic.style.display = 'block';
+            chosenTopicText.textContent = topic;
+        }
+        
+        // Бүх тоглогчид сэдвийг харуулах
+        const topicDisplay = document.createElement('div');
+        topicDisplay.className = 'topic-display';
+        topicDisplay.style.background = '#e8f5e8';
+        topicDisplay.style.border = '2px solid #27ae60';
+        topicDisplay.style.margin = '20px 0';
+        topicDisplay.style.padding = '15px';
+        topicDisplay.style.borderRadius = '10px';
+        topicDisplay.style.textAlign = 'center';
+        topicDisplay.innerHTML = `
+            <h4 style="color: #27ae60; margin-bottom: 10px;">📝 Тоглоомын сэдэв</h4>
+            <p style="font-weight: bold; font-size: 1.1em;">${topic}</p>
+        `;
+        
+        // Хүлээлгэний дэлгэцэд нэмэх
+        const waitingContent = document.querySelector('.waiting-content');
+        if (waitingContent) {
+            // Өмнөх сэдвийг устгах
+            const oldTopicDisplay = waitingContent.querySelector('.topic-display');
+            if (oldTopicDisplay) {
+                oldTopicDisplay.remove();
+            }
+            
+            // Шинэ сэдвийг оруулах
+            waitingContent.insertBefore(topicDisplay, waitingContent.querySelector('.waiting-chat-container'));
         }
     }
 }
