@@ -50,6 +50,35 @@
                         <div class="code-box" id="room-code-display"></div>
                         <p>Энэ кодыг найзууддаа илгээж болно!</p>
                     </div>
+                    
+                    <!-- Хүлээлгэний үеийн чат -->
+                    <div class="waiting-chat-container">
+                        <h3>💬 Хүлээлгэний чат</h3>
+                        <div class="messages" id="waiting-messages">
+                            <!-- Зурвасууд энд гарна -->
+                        </div>
+                        <div class="chat-input">
+                            <input type="text" id="waiting-message-input" placeholder="Зурвас бичих..." maxlength="100">
+                            <button id="send-waiting-message-btn" class="btn-secondary">Илгээх</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Зөвхөн өрөө үүсгэгчид харагдах хэсэг -->
+                    <div class="creator-controls" id="creator-controls" style="display: none;">
+                        <h3>📝 Сэдэв сонгох</h3>
+                        <div class="topic-selection" id="topic-selection">
+                            <p>Тоглоомын сэдвийг сонгоно уу:</p>
+                            <div class="topics-grid" id="topics-grid">
+                                <!-- Сэдвүүд энд нэмэгдэнэ -->
+                            </div>
+                            <button id="select-topic-btn" class="btn-primary" style="display: none;">Сэдвийг сонгох</button>
+                        </div>
+                        <div class="selected-topic" id="selected-topic" style="display: none;">
+                            <p>Сонгосон сэдэв: <strong id="chosen-topic-text"></strong></p>
+                            <button id="change-topic-btn" class="btn-secondary">Сэдвийг өөрчлөх</button>
+                        </div>
+                        <button id="start-game-btn" class="btn-primary">Тоглоом эхлүүлэх</button>
+                    </div>
                 </div>
             </section>
 
