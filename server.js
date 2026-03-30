@@ -427,6 +427,18 @@ io.on('connection', (socket) => {
             return;
         }
 
+        // Хамгийн багадаа 3 тоглогч хэрэгтэй
+        if (room.players.size < 3) {
+            socket.emit('error', 'Тоглоом эхлүүлэхийн тулд хамгийн багадаа 3 тоглогч хэрэгтэй!');
+            return;
+        }
+
+        // Сэдэв сонгогдсон эсэх
+        if (!room.selectedTopic) {
+            socket.emit('error', 'Эхлэхийн тулд сэдэв сонгох шаардлагатай!');
+            return;
+        }
+
         // Тоглоомын горимыг шинэчлэх - асуулт хариулт
         room.gamePhase = 'question';
         room.currentRound = 1;
