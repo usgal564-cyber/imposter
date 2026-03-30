@@ -82,16 +82,47 @@
                 </div>
             </section>
 
-            <!-- Тоглогчдын жагсаалт -->
-            <section id="players-screen" class="screen">
-                <div class="players-content">
-                    <h2>👥 Тоглогчид</h2>
-                    <div class="players-grid" id="players-grid">
-                        <!-- Тоглогчид энд нэмэгдэнэ -->
+            <!-- Асуулт хариултын хэсэг -->
+            <section id="question-screen" class="screen">
+                <div class="question-content">
+                    <h2>❓ Асуултын үе</h2>
+                    <div class="round-info">
+                        <p>Раунд: <span id="current-round">1</span>/5</p>
+                        <p>Үлдсэн тоглогчид: <span id="remaining-players">5</span></p>
                     </div>
-                    <div class="game-info">
-                        <p>Таны дүр: <span id="player-role" class="role-badge"></span></p>
-                        <p>Тоглогчдын тоо: <span id="player-count">5</span></p>
+                    <div class="question-container">
+                        <div class="question-box" id="question-box">
+                            <h3 id="question-text">Асуулт энд гарна...</h3>
+                        </div>
+                        <div class="timer-container">
+                            <div class="timer-bar" id="timer-bar"></div>
+                            <p id="timer-text">30</p>
+                        </div>
+                    </div>
+                    <div class="answer-input">
+                        <input type="text" id="answer-input" placeholder="Хариултаа бичих..." maxlength="50">
+                        <button id="submit-answer-btn" class="btn-primary">Хариулах</button>
+                    </div>
+                    <div class="players-status" id="players-status">
+                        <!-- Тоглогчдын байдал харагдах болно -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Эцсийн таамаглалтын хэсэг -->
+            <section id="final-guess-screen" class="screen">
+                <div class="final-guess-content">
+                    <h2>🎯 Эцсийн таамаглал</h2>
+                    <p>Үлдсэн тоглогчдоос хэн Imposter болохыг таамаглаарай!</p>
+                    <div class="remaining-players-grid" id="remaining-players-grid">
+                        <!-- Үлдсэн тоглогчид энд харагдах болно -->
+                    </div>
+                    <div class="final-voting">
+                        <h3>Imposter-г сонгох:</h3>
+                        <div class="final-voting-grid" id="final-voting-grid">
+                            <!-- Санал хураалтын сонголтууд -->
+                        </div>
+                        <button id="submit-final-vote-btn" class="btn-primary">Санал өгөх</button>
                     </div>
                 </div>
             </section>
