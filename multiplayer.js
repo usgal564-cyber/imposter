@@ -40,6 +40,7 @@ class MultiplayerImposterGame {
         });
 
         this.socket.on('room-joined', (data) => {
+            console.log('room-joined event хүлээгдлээ:', data);
             this.currentRoom = data.room;
             this.isCreator = data.isCreator;
             this.showScreen('waiting-screen');
@@ -206,11 +207,14 @@ class MultiplayerImposterGame {
             const playerName = document.getElementById('player-name-input').value.trim();
             const roomCode = document.getElementById('room-code-input').value.trim();
             
+            console.log('Өрөөнд орох оролдлого:', { playerName, roomCode });
+            
             if (!playerName || !roomCode) {
                 alert('Нэр болон өрөөний кодоо оруулна уу!');
                 return;
             }
             
+            console.log('Сервер рүү join-room event илгээж байна');
             this.socket.emit('join-room', { roomId: roomCode, playerName });
         });
 
@@ -412,22 +416,27 @@ class MultiplayerImposterGame {
             const playerCard = document.createElement('div');
             playerCard.className = 'player-card';
             
-            // Өөрийн дүрийн өнгө
+            // Тоглоом эхлэх үед бүх тоглогчид өөрийн дүрийг харах ёстой
             if (player.id === this.socket.id) {
+                // Өөрийн дүр
                 if (player.role === 'imposter') {
                     playerCard.classList.add('player-self-imposter');
                 } else {
                     playerCard.classList.add('player-self-crewmate');
                 }
             } else {
-                // Бусад тоглогчдыг үргэлж ногоон өнгөөр харуулах
-                playerCard.classList.add('player-crewmate');
+                // Бусад тоглогчдын дүрийг харуулах
+                if (player.role === 'imposter') {
+                    playerCard.classList.add('player-imposter');
+                } else {
+                    playerCard.classList.add('player-crewmate');
+                }
             }
             
             playerCard.innerHTML = `
                 <div class="player-avatar">${player.avatar}</div>
                 <div class="player-name">${player.name}</div>
-                <div class="role-indicator ${player.id === this.socket.id ? player.role : 'crewmate'}"></div>
+                <div class="role-indicator ${player.role}"></div>
             `;
             
             playersGrid.appendChild(playerCard);
