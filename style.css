@@ -658,6 +658,212 @@ footer {
     background: #e67e22;
 }
 
+/* Асуулт хариултын дэлгэц */
+.question-content {
+    text-align: center;
+}
+
+.question-content h2 {
+    color: #764ba2;
+    margin-bottom: 20px;
+    font-size: 2em;
+}
+
+.round-info {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-bottom: 30px;
+    background: #f7fafc;
+    padding: 15px;
+    border-radius: 10px;
+    border: 2px solid #e2e8f0;
+}
+
+.round-info p {
+    font-weight: bold;
+    color: #333;
+}
+
+.question-container {
+    margin-bottom: 30px;
+}
+
+.question-box {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 25px rgba(118, 75, 162, 0.3);
+}
+
+.question-box h3 {
+    font-size: 1.4em;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.timer-container {
+    background: #f7fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 15px;
+    position: relative;
+    height: 40px;
+}
+
+.timer-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #48bb78 0%, #f6ad55 50%, #e53e3e 100%);
+    border-radius: 8px;
+    width: 100%;
+    transition: width 1s linear;
+}
+
+.timer-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-weight: bold;
+    font-size: 1.2em;
+    color: #333;
+}
+
+.answer-input {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-bottom: 30px;
+}
+
+.answer-input input {
+    flex: 1;
+    max-width: 400px;
+    padding: 15px;
+    font-size: 1.2em;
+    border: 2px solid #e2e8f0;
+    border-radius: 25px;
+    text-align: center;
+    transition: border-color 0.3s ease;
+}
+
+.answer-input input:focus {
+    outline: none;
+    border-color: #764ba2;
+}
+
+.players-status {
+    background: #f7fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 15px;
+    padding: 20px;
+}
+
+.player-status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    margin: 5px 0;
+    background: white;
+    border-radius: 8px;
+    border-left: 4px solid #764ba2;
+}
+
+.player-status-item.eliminated {
+    opacity: 0.5;
+    border-left-color: #e53e3e;
+    text-decoration: line-through;
+}
+
+/* Эцсийн таамаглалтын дэлгэц */
+.final-guess-content {
+    text-align: center;
+}
+
+.final-guess-content h2 {
+    color: #764ba2;
+    margin-bottom: 20px;
+    font-size: 2em;
+}
+
+.final-guess-content > p {
+    font-size: 1.2em;
+    margin-bottom: 30px;
+    color: #666;
+}
+
+.remaining-players-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.remaining-player-card {
+    background: linear-gradient(135deg, #f6f8fb 0%, #e9ecef 100%);
+    padding: 20px;
+    border-radius: 15px;
+    text-align: center;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    cursor: pointer;
+}
+
+.remaining-player-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    border-color: #764ba2;
+}
+
+.remaining-player-card.selected {
+    border-color: #e53e3e;
+    background: linear-gradient(135deg, #fed7d7 0%, #fc8181 100%);
+}
+
+.final-voting {
+    background: #f7fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 15px;
+    padding: 25px;
+}
+
+.final-voting h3 {
+    color: #764ba2;
+    margin-bottom: 20px;
+    font-size: 1.3em;
+}
+
+.final-voting-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.final-vote-option {
+    background: white;
+    border: 2px solid #e2e8f0;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.final-vote-option:hover {
+    border-color: #764ba2;
+    transform: translateY(-2px);
+}
+
+.final-vote-option.selected {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-color: #764ba2;
+}
+
 @media (max-width: 768px) {
     .game-container {
         padding: 10px;
@@ -709,5 +915,27 @@ footer {
     .creator-controls {
         margin: 15px 0;
         padding: 20px;
+    }
+    
+    .round-info {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .answer-input {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .answer-input input {
+        max-width: 100%;
+    }
+    
+    .remaining-players-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .final-voting-grid {
+        grid-template-columns: 1fr;
     }
 }
