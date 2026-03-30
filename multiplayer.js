@@ -71,6 +71,49 @@ class MultiplayerImposterGame {
             this.addSystemMessage(`🎮 Тоглоом эхэллээ! Таны дүр: ${data.role === 'imposter' ? '🔪 Imposter' : '👥 Crewmate'}`);
         });
 
+        // Асуултын үе эхэллээ
+        this.socket.on('question-phase-started', (data) => {
+            this.currentPlayer.role = data.role;
+            this.gamePhase = 'question';
+            this.showScreen('question-screen');
+            this.showQuestion(data);
+            this.addSystemMessage(`🎮 Асуултын тоглоом эхэллээ! Таны дүр: ${data.role === 'imposter' ? '🔪 Imposter' : '👥 Crewmate'}`);
+        });
+
+        // Хариултын үр дүн
+        this.socket.on('answer-result', (data) => {
+            if (data.correct) {
+                this.addSystemMessage('✅ Зөв хариулт!');
+            } else {
+                this.addSystemMessage('❌ Буруу хариулт! Та энэ раундад хасагдах болно.');
+            }
+        });
+
+        // Раунд дуусав
+        this.socket.on('round-ended', (data) => {
+            this.addSystemMessage(`📍 Раунд ${data.round} дуусав! ${data.eliminated} тоглогч хасагдлаа. Үлдсэн: ${data.remaining}`);
+            
+            if (data.isFinalRound) {
+                this.addSystemMessage('🎯 Эцсийн таамаглалтын үе эхэллээ!');
+            } else {
+                this.addSystemMessage(`⏳ Дараагийн раунд түрүүлэгдлээ...`);
+            }
+        });
+
+        // Дараагийн асуулт
+        this.socket.on('next-question', (data) => {
+            this.showQuestion(data);
+            this.addSystemMessage(`❓ Раунд ${data.round}: Шинэ асуулт!`);
+        });
+
+        // Эцсийн таамаглалтын үе
+        this.socket.on('final-guess-phase', (data) => {
+            this.gamePhase = 'final_guess';
+            this.showScreen('final-guess-screen');
+            this.showFinalGuess(data);
+            this.addSystemMessage('🎯 Үлдсэн тоглогчдоос хэн Imposter болохыг сонгоно уу!');
+        });
+
         this.socket.on('chat-message', (data) => {
             this.addMessage(data.playerName, data.text, data.playerId === this.socket.id);
         });
@@ -187,6 +230,23 @@ class MultiplayerImposterGame {
         // Сэдвийг өөрчлөх товч
         document.getElementById('change-topic-btn').addEventListener('click', () => {
             this.showTopicSelection(this.allTopics);
+        });
+
+        // Хариулт илгээх
+        document.getElementById('submit-answer-btn').addEventListener('click', () => {
+            this.submitAnswer();
+        });
+
+        // Enter товчоор хариулт илгээх
+        document.getElementById('answer-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.submitAnswer();
+            }
+        });
+
+        // Эцсийн санал өгөх
+        document.getElementById('submit-final-vote-btn').addEventListener('click', () => {
+            this.submitFinalVote();
         });
 
         // Санал өгөх
@@ -563,6 +623,155 @@ class MultiplayerImposterGame {
             // Шинэ сэдвийг оруулах
             waitingContent.insertBefore(topicDisplay, waitingContent.querySelector('.waiting-chat-container'));
         }
+    }
+
+    // Асуулт харуулах
+    showQuestion(data) {
+        const questionText = document.getElementById('question-text');
+        const currentRound = document.getElementById('current-round');
+        const remainingPlayers = document.getElementById('remaining-players');
+        const answerInput = document.getElementById('answer-input');
+        const submitBtn = document.getElementById('submit-answer-btn');
+        
+        if (questionText) questionText.textContent = data.question;
+        if (currentRound) currentRound.textContent = data.round;
+        if (remainingPlayers) remainingPlayers.textContent = data.room.remainingPlayers;
+        
+        // Хариултын сонголтуудыг харуулах
+        if (answerInput && data.answers) {
+            // Хариултын input-г цэвэрлэх
+            answerInput.value = '';
+            answerInput.placeholder = 'Зөв хариулт сонгох эсвэл бичих...';
+            answerInput.disabled = false;
+        }
+        
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Хариулах';
+        }
+        
+        // Timer эхлүүлэх
+        this.startTimer(30);
+    }
+
+    // Timer эхлүүлэх
+    startTimer(seconds) {
+        const timerBar = document.getElementById('timer-bar');
+        const timerText = document.getElementById('timer-text');
+        
+        if (!timerBar || !timerText) return;
+        
+        let timeLeft = seconds;
+        timerText.textContent = timeLeft;
+        timerBar.style.width = '100%';
+        
+        this.timerInterval = setInterval(() => {
+            timeLeft--;
+            timerText.textContent = timeLeft;
+            timerBar.style.width = `${(timeLeft / seconds) * 100}%`;
+            
+            if (timeLeft <= 0) {
+                clearInterval(this.timerInterval);
+                timerText.textContent = '0';
+                timerBar.style.width = '0%';
+                
+                // Цаг дуусвал автомат хариулах
+                this.submitAnswer();
+            }
+        }, 1000);
+    }
+
+    // Хариулт илгээх
+    submitAnswer() {
+        const answerInput = document.getElementById('answer-input');
+        const submitBtn = document.getElementById('submit-answer-btn');
+        
+        if (!answerInput || !answerInput.value.trim()) {
+            alert('Хариултаа оруулна уу!');
+            return;
+        }
+        
+        const answer = answerInput.value.trim();
+        
+        // Input болон товчийг идэвхгүй болгох
+        answerInput.disabled = true;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Хариулт илгээгдлээ';
+        
+        // Timer-г зогсоох
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+        }
+        
+        // Сервер рүү хариулт илгээх
+        this.socket.emit('submit-answer', answer);
+    }
+
+    // Эцсийн таамаглалт харуулах
+    showFinalGuess(data) {
+        const remainingGrid = document.getElementById('remaining-players-grid');
+        const finalVotingGrid = document.getElementById('final-voting-grid');
+        
+        if (!remainingGrid || !finalVotingGrid) return;
+        
+        remainingGrid.innerHTML = '';
+        finalVotingGrid.innerHTML = '';
+        
+        data.remainingPlayers.forEach(player => {
+            // Үлдсэн тоглогчдын карт
+            const playerCard = document.createElement('div');
+            playerCard.className = 'remaining-player-card';
+            playerCard.innerHTML = `
+                <div style="font-size:3em;">${player.avatar}</div>
+                <div>${player.name}</div>
+            `;
+            playerCard.addEventListener('click', () => {
+                this.selectFinalPlayer(player.id);
+            });
+            remainingGrid.appendChild(playerCard);
+            
+            // Санал хураалтын сонголт
+            const voteOption = document.createElement('div');
+            voteOption.className = 'final-vote-option';
+            voteOption.dataset.playerId = player.id;
+            voteOption.innerHTML = `
+                <div style="font-size:2em;">${player.avatar}</div>
+                <div>${player.name}</div>
+            `;
+            voteOption.addEventListener('click', () => {
+                this.selectFinalPlayer(player.id);
+            });
+            finalVotingGrid.appendChild(voteOption);
+        });
+    }
+
+    // Эцсийн тоглогч сонгох
+    selectFinalPlayer(playerId) {
+        document.querySelectorAll('.final-vote-option').forEach(option => {
+            option.classList.remove('selected');
+        });
+        
+        const selectedOption = document.querySelector(`[data-player-id="${playerId}"]`);
+        if (selectedOption) {
+            selectedOption.classList.add('selected');
+            this.selectedFinalVote = playerId;
+        }
+    }
+
+    // Эцсийн санал илгээх
+    submitFinalVote() {
+        if (!this.selectedFinalVote) {
+            alert('Imposter-г сонгоно уу!');
+            return;
+        }
+        
+        const submitBtn = document.getElementById('submit-final-vote-btn');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Санал илгээгдлээ...';
+        }
+        
+        this.socket.emit('submit-final-vote', this.selectedFinalVote);
     }
 }
 
