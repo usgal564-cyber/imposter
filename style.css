@@ -583,29 +583,28 @@ footer {
 }
 
 .topic-option {
-    background: white;
+    padding: 12px 20px;
+    margin: 5px;
+    background: rgba(255, 255, 255, 0.9);
     border: 2px solid #e2e8f0;
-    padding: 15px;
-    border-radius: 10px;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
-    text-align: center;
-    font-size: 0.95em;
-    line-height: 1.4;
+    font-size: 0.9em;
 }
 
 .topic-option:hover {
-    border-color: #f39c12;
+    background: rgba(103, 126, 234, 0.1);
+    border-color: #667eea;
     transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(243, 156, 18, 0.2);
 }
 
 .topic-option.selected {
-    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    border-color: #e67e22;
+    border-color: #764ba2;
     transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(230, 126, 34, 0.3);
+    box-shadow: 0 4px 15px rgba(118, 75, 162, 0.3);
 }
 
 .selected-topic {
