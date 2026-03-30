@@ -864,6 +864,154 @@ footer {
     border-color: #764ba2;
 }
 
+.btn-danger {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 25px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+}
+
+.btn-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+}
+
+.btn-danger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Тоглогчдын өнгөний заалтууд */
+.player-imposter {
+    border: 3px solid #e74c3c !important;
+    background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%) !important;
+    box-shadow: 0 0 20px rgba(231, 76, 60, 0.5) !important;
+}
+
+.player-crewmate {
+    border: 3px solid #27ae60 !important;
+    background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%) !important;
+    box-shadow: 0 0 20px rgba(39, 174, 96, 0.3) !important;
+}
+
+.player-self-imposter {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%) !important;
+    color: white !important;
+}
+
+.player-self-crewmate {
+    background: linear-gradient(135deg, #27ae60 0%, #229954 100%) !important;
+    color: white !important;
+}
+
+/* Ангиллуудын загвар */
+.category-section {
+    margin-bottom: 20px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 10px;
+    padding: 15px;
+    border: 2px solid #e2e8f0;
+}
+
+.category-section h4 {
+    color: #764ba2;
+    margin-bottom: 10px;
+    font-size: 1.1em;
+    border-bottom: 2px solid #764ba2;
+    padding-bottom: 5px;
+}
+
+.category-topics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+/* Icon загварууд */
+.topic-icon {
+    font-size: 1.5em;
+    margin-right: 10px;
+}
+
+.player-avatar {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+}
+
+.role-indicator {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.role-indicator.imposter {
+    background: #e74c3c;
+    box-shadow: 0 0 10px rgba(231, 76, 60, 0.8);
+}
+
+.role-indicator.crewmate {
+    background: #27ae60;
+    box-shadow: 0 0 10px rgba(39, 174, 96, 0.6);
+}
+
+/* Анимаци эффектүүд */
+@keyframes pulse-red {
+    0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+}
+
+@keyframes pulse-green {
+    0% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(39, 174, 96, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0); }
+}
+
+.player-imposter {
+    animation: pulse-red 2s infinite;
+}
+
+.player-crewmate {
+    animation: pulse-green 2s infinite;
+}
+
+/* Хариултын өнгө */
+.answer-correct {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%) !important;
+    border-color: #27ae60 !important;
+}
+
+.answer-incorrect {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%) !important;
+    border-color: #e74c3c !important;
+}
+
+/* Тоглоомын статус */
+.game-status-waiting {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border: 2px solid #f39c12;
+}
+
+.game-status-playing {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    border: 2px solid #17a2b8;
+}
+
+.game-status-ended {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    border: 2px solid #dc3545;
+}
+
 @media (max-width: 768px) {
     .game-container {
         padding: 10px;
@@ -875,6 +1023,7 @@ footer {
     
     header h1 {
         font-size: 2em;
+    }
     }
     
     .players-grid {
@@ -938,4 +1087,4 @@ footer {
     .final-voting-grid {
         grid-template-columns: 1fr;
     }
-}
+
