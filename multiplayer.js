@@ -34,15 +34,10 @@ class MultiplayerImposterGame {
                 roomCodeDisplay.textContent = data.roomId;
             }
             
-            // Хэрэв үүсгэгч бол сэдвүүдийг харуулах
+            // Хэрэв үүсгэгч бол зөвхөн санамсаргүй сэдэв товч харуулах
             if (data.isCreator) {
-                console.log('Үүсгэгч тул сэдвүүдийг харуулж байна:', { 
-                    topics: data.topics, 
-                    categories: data.categories 
-                });
-                this.showTopicSelection(data.topics, data.categories);
-            } else {
-                console.log('Үүсгэгч биш тул сэдэв харуулахгүй');
+                console.log('Үүсгэгч тул санамсаргүй сэдэв товч харуулж байна');
+                this.showCreatorControls();
             }
         });
 
@@ -100,7 +95,11 @@ class MultiplayerImposterGame {
             this.updateRoomInfo(data.room);
             this.clearMessages();
             this.addSystemMessage(data.message);
-            this.showTopicSelection(this.allTopics, this.allCategories);
+            
+            // Үүсгэгч бол дахин санамсаргүй сэдэв сонгох боломжтой
+            if (this.isCreator) {
+                this.showCreatorControls();
+            }
         });
 
         // Сэдэв сонгогдсон
@@ -171,24 +170,14 @@ class MultiplayerImposterGame {
             }
         });
 
-        // Сэдэв сонгох товч
-        document.getElementById('select-topic-btn').addEventListener('click', () => {
-            this.selectTopic();
-        });
-
-        // Сэдвийг өөрчлөх товч
-        document.getElementById('change-topic-btn').addEventListener('click', () => {
-            this.showTopicSelection(this.allTopics, this.allCategories);
+        // Санамсаргүй сэдэв сонгох товч
+        document.getElementById('random-topic-btn').addEventListener('click', () => {
+            this.selectRandomTopic();
         });
 
         // Өрөөний кодыг хуулбарлах товч
         document.getElementById('copy-room-code-btn').addEventListener('click', () => {
             this.copyRoomCode();
-        });
-
-        // Санамсаргүй сэдэв сонгох товч
-        document.getElementById('random-topic-btn').addEventListener('click', () => {
-            this.selectRandomTopic();
         });
 
         // Тоглоом дуусгах товч
@@ -260,148 +249,38 @@ class MultiplayerImposterGame {
         }
     }
 
-    // Сэдэв сонголтын функцүүд
-    showTopicSelection(topics, categories) {
-        console.log('showTopicSelection дуудагдлаа:', { topics, categories });
-        
-        this.allTopics = topics || [];
-        this.allCategories = categories || {};
-        
+    // Үүсгэгчийн хяналтын хэсгийг харуулах
+    showCreatorControls() {
         const creatorControls = document.getElementById('creator-controls');
-        const topicSelection = document.getElementById('topic-selection');
-        const selectedTopic = document.getElementById('selected-topic');
-        const topicsGrid = document.getElementById('topics-grid');
-        
-        console.log('DOM элементүүд:', { 
-            creatorControls: !!creatorControls, 
-            topicSelection: !!topicSelection, 
-            selectedTopic: !!selectedTopic, 
-            topicsGrid: !!topicsGrid 
-        });
-        
-        if (!creatorControls || !topicSelection || !topicsGrid) {
-            console.error('DOM элемент олдсонгүй!');
-            return;
-        }
-        
-        // Зөвхөн үүсгэгчид харагдах
-        if (this.isCreator) {
+        if (creatorControls) {
             creatorControls.style.display = 'block';
-            topicSelection.style.display = 'block';
-            selectedTopic.style.display = 'none';
-            
-            // Ангиллууд болон сэдвүүдийг харуулах
-            topicsGrid.innerHTML = '';
-            
-            // Санамсаргүй сэдэв товч
-            const randomBtn = document.createElement('button');
-            randomBtn.id = 'random-topic-btn';
-            randomBtn.className = 'btn-secondary';
-            randomBtn.textContent = '🎲 Санамсаргүй сэдэв сонгох';
-            randomBtn.style.marginBottom = '20px';
-            randomBtn.style.width = '100%';
-            topicsGrid.appendChild(randomBtn);
-            
-            // Ангиллуудыг харуулах
-            if (this.allCategories && Object.keys(this.allCategories).length > 0) {
-                Object.entries(this.allCategories).forEach(([categoryKey, categoryTopics]) => {
-                    const categorySection = document.createElement('div');
-                    categorySection.className = 'category-section';
-                    categorySection.innerHTML = `
-                        <h4>📁 ${this.getCategoryName(categoryKey)}</h4>
-                        <div class="category-topics"></div>
-                    `;
-                    
-                    const categoryTopicsDiv = categorySection.querySelector('.category-topics');
-                    categoryTopics.forEach(topic => {
-                        const topicOption = document.createElement('div');
-                        topicOption.className = 'topic-option';
-                        topicOption.textContent = topic;
-                        topicOption.addEventListener('click', (e) => {
-                            this.selectTopicOption(topic, e.target);
-                        });
-                        categoryTopicsDiv.appendChild(topicOption);
-                    });
-                    
-                    topicsGrid.appendChild(categorySection);
-                });
-            } else if (this.allTopics && this.allTopics.length > 0) {
-                // Хуучин сэдвүүдийг харуулах
-                this.allTopics.forEach(topic => {
-                    const topicOption = document.createElement('div');
-                    topicOption.className = 'topic-option';
-                    topicOption.textContent = topic;
-                    topicOption.addEventListener('click', (e) => {
-                        this.selectTopicOption(topic, e.target);
-                    });
-                    topicsGrid.appendChild(topicOption);
-                });
-            } else {
-                topicsGrid.innerHTML = '<p>Сэдэв олдсонгүй!</p>';
-            }
         }
     }
 
-    getCategoryName(key) {
-        const names = {
-            clothing: '👕 Хувцас',
-            brands: '🏷️ Брэндүүд',
-            movies: '🎬 Кинонууд',
-            music: '🎵 Хөгжим',
-            food: '🍽 Хоол',
-            sports: '⚽ Спорт',
-            technology: '💻 Технологи',
-            animals: '🐾 Амьтад'
-        };
-        return names[key] || key;
-    }
-
+    // Санамсаргүй сэдэв сонгох
     selectRandomTopic() {
         this.socket.emit('select-random-topic');
-    }
-
-    selectTopicOption(topic, element) {
-        console.log('selectTopicOption дуудагдлаа:', topic);
-        
-        // Өмнөх сонголтыг цуцлах
-        document.querySelectorAll('.topic-option').forEach(option => {
-            option.classList.remove('selected');
-        });
-        
-        // Шинэ сонголт
-        if (element) {
-            element.classList.add('selected');
-        }
-        this.selectedTopic = topic;
-        
-        // Сонгох товчийг харуулах
-        const selectBtn = document.getElementById('select-topic-btn');
-        if (selectBtn) {
-            selectBtn.style.display = 'inline-block';
-        }
-    }
-
-    selectTopic() {
-        if (this.selectedTopic) {
-            this.socket.emit('select-topic', this.selectedTopic);
-        }
     }
 
     showSelectedTopic(topic, category) {
         console.log('showSelectedTopic дуудагдлаа:', { topic, category });
         
-        const topicSelection = document.getElementById('topic-selection');
         const selectedTopic = document.getElementById('selected-topic');
         const chosenTopicText = document.getElementById('chosen-topic-text');
+        const startGameBtn = document.getElementById('start-game-btn');
         
-        if (topicSelection && selectedTopic && chosenTopicText) {
-            topicSelection.style.display = 'none';
+        if (selectedTopic && chosenTopicText) {
             selectedTopic.style.display = 'block';
             chosenTopicText.textContent = topic;
             
             // Current room-д сонгосон сэдвийг хадгалах
             if (this.currentRoom) {
                 this.currentRoom.selectedTopic = topic;
+            }
+            
+            // Тоглоом эхлүүлэх товчийг харуулах
+            if (startGameBtn) {
+                startGameBtn.style.display = 'inline-block';
             }
             
             console.log('Сэдэв сонгогдлоо, currentRoom:', this.currentRoom);
@@ -486,15 +365,6 @@ class MultiplayerImposterGame {
         if (messagesContainer) {
             messagesContainer.innerHTML = '';
         }
-    }
-
-    enableWaitingChat() {
-        // Хүлээлгэний чат идэвхжүүлэх
-        const waitingInput = document.getElementById('waiting-message-input');
-        const waitingSendBtn = document.getElementById('send-waiting-message-btn');
-        
-        if (waitingInput) waitingInput.disabled = false;
-        if (waitingSendBtn) waitingSendBtn.disabled = false;
     }
 
     // Өрөөний кодыг хуулбарлах функц
