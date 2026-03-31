@@ -38,6 +38,8 @@ class MultiplayerImposterGame {
             if (data.isCreator) {
                 console.log('Үүсгэгч тул санамсаргүй сэдэв товч харуулж байна');
                 this.showCreatorControls();
+                // Хүлээлгэний чатыг идэвхжүүлэх
+                this.enableWaitingChat();
             }
         });
 
@@ -67,7 +69,7 @@ class MultiplayerImposterGame {
         this.socket.on('player-joined', (data) => {
             this.currentRoom = data.room;
             this.updateRoomInfo(data.room);
-            this.addSystemMessage(`👋 ${data.player.name} нэгдлээ!`);
+            this.addSystemMessage(`👋 ${data.player.name} өрөөнд орлоо!`);
         });
 
         this.socket.on('game-started', (data) => {
@@ -111,6 +113,11 @@ class MultiplayerImposterGame {
 
         this.socket.on('error', (message) => {
             alert(`Алдаа: ${message}`);
+        });
+
+        // Хүлээлгэний чат мессеж
+        this.socket.on('waiting-chat-message', (data) => {
+            this.addWaitingMessage(data.playerName, data.text, data.playerId === this.socket.id);
         });
     }
 
@@ -178,6 +185,18 @@ class MultiplayerImposterGame {
         // Өрөөний кодыг хуулбарлах товч
         document.getElementById('copy-room-code-btn').addEventListener('click', () => {
             this.copyRoomCode();
+        });
+
+        // Хүлээлгэний зурвас илгээх товч
+        document.getElementById('send-waiting-message-btn').addEventListener('click', () => {
+            this.sendWaitingMessage();
+        });
+
+        // Enter товчоор хүлээлгэний зурвас илгээх
+        document.getElementById('waiting-message-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.sendWaitingMessage();
+            }
         });
 
         // Тоглоом дуусгах товч
@@ -365,6 +384,15 @@ class MultiplayerImposterGame {
         if (messagesContainer) {
             messagesContainer.innerHTML = '';
         }
+    }
+
+    enableWaitingChat() {
+        // Хүлээлгэний чат идэвхжүүлэх
+        const waitingInput = document.getElementById('waiting-message-input');
+        const waitingSendBtn = document.getElementById('send-waiting-message-btn');
+        
+        if (waitingInput) waitingInput.disabled = false;
+        if (waitingSendBtn) waitingSendBtn.disabled = false;
     }
 
     // Өрөөний кодыг хуулбарлах функц
