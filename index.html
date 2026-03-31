@@ -84,6 +84,41 @@
                 </div>
             </section>
 
+            <!-- Ярилцлагын хэсэг -->
+            <section id="discussion-screen" class="screen">
+                <div class="discussion-content">
+                    <h2>💬 Ярилцлага</h2>
+                    <div class="topic-display">
+                        <h3>📝 Сэдэв: <span id="discussion-topic">...</span></h3>
+                    </div>
+                    
+                    <div class="players-section">
+                        <h3>👥 Тоглогчид</h3>
+                        <div class="players-grid" id="players-grid">
+                            <!-- Тоглогчдын карт энд харагдана -->
+                        </div>
+                    </div>
+                    
+                    <div class="chat-section">
+                        <h3>💬 Чат</h3>
+                        <div class="chat-container">
+                            <div class="messages" id="messages">
+                                <!-- Зурвасууд энд харагдана -->
+                            </div>
+                            <div class="chat-input">
+                                <input type="text" id="message-input" placeholder="Зурвас бичих..." maxlength="100">
+                                <button id="send-message-btn" class="btn-primary">Илгээх</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="role-info">
+                        <h3>🎭 Таны дүр:</h3>
+                        <div id="player-role" class="role-badge">...</div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Асуулт хариултын хэсэг -->
             <section id="question-screen" class="screen">
                 <div class="question-content">
@@ -108,6 +143,20 @@
                     <div class="players-status" id="players-status">
                         <!-- Тоглогчдын байдал харагдах болно -->
                     </div>
+                </div>
+            </section>
+
+            <!-- Санал өгөх хэсэг -->
+            <section id="voting-screen" class="screen">
+                <div class="voting-content">
+                    <h2>🗳️ Санал өгөх</h2>
+                    <p>Та хэн нь Imposter болохыг саналаа өгнө үү!</p>
+                    
+                    <div class="voting-grid" id="voting-grid">
+                        <!-- Тоглогчдын санал өгөх карт энд харагдана -->
+                    </div>
+                    
+                    <button id="vote-btn" class="btn-primary">Санал өгөх</button>
                 </div>
             </section>
 
