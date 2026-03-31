@@ -409,6 +409,16 @@ class MultiplayerImposterGame {
     }
 
     // Чат функцийн
+    sendMessage() {
+        const input = document.getElementById('message-input');
+        const message = input.value.trim();
+        
+        if (message) {
+            this.socket.emit('chat-message', message);
+            input.value = '';
+        }
+    }
+
     sendWaitingMessage() {
         const input = document.getElementById('waiting-message-input');
         const message = input.value.trim();
@@ -417,6 +427,21 @@ class MultiplayerImposterGame {
             this.socket.emit('waiting-chat-message', message);
             input.value = '';
         }
+    }
+
+    addMessage(playerName, text, isOwn = false) {
+        const messagesContainer = document.getElementById('messages');
+        if (!messagesContainer) return;
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${isOwn ? 'own' : ''}`;
+        messageDiv.innerHTML = `
+            <span class="player-name">${playerName}:</span>
+            <span class="message-text">${text}</span>
+        `;
+        
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
     addWaitingMessage(playerName, text, isOwn = false) {
@@ -435,15 +460,32 @@ class MultiplayerImposterGame {
     }
 
     addSystemMessage(text) {
-        const messagesContainer = document.getElementById('waiting-messages');
-        if (!messagesContainer) return;
+        // Хүлээлгэний чат руу систем мессеж
+        const waitingMessagesContainer = document.getElementById('waiting-messages');
+        if (waitingMessagesContainer) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message system';
+            messageDiv.innerHTML = `<span class="system-text">${text}</span>`;
+            waitingMessagesContainer.appendChild(messageDiv);
+            waitingMessagesContainer.scrollTop = waitingMessagesContainer.scrollHeight;
+        }
 
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message system';
-        messageDiv.innerHTML = `<span class="system-text">${text}</span>`;
-        
-        messagesContainer.appendChild(messageDiv);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        // Ярилцлагын чат руу систем мессеж
+        const messagesContainer = document.getElementById('messages');
+        if (messagesContainer) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message system';
+            messageDiv.innerHTML = `<span class="system-text">${text}</span>`;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+    }
+
+    clearMessages() {
+        const messagesContainer = document.getElementById('messages');
+        if (messagesContainer) {
+            messagesContainer.innerHTML = '';
+        }
     }
 
     enableWaitingChat() {
